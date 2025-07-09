@@ -4,10 +4,19 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import re
+import os
 
 st.set_page_config(page_title="Muuto Content Extractor", layout="wide")
-st.title("🧱 Muuto Content Extractor")
+st.title("🧱 Muuto Content Extractor with Block Matching")
+
+# Load block list
+block_list = []
+try:
+    block_df = pd.read_excel("blokke.xlsx")
+    block_list = block_df["Name"].dropna().unique().tolist()
+    st.success(f"✅ Loaded {len(block_list)} known block names from blokke.xlsx")
+except Exception as e:
+    st.warning("⚠️ Could not load blokke.xlsx. Block matching will be skipped.")
 
 # Input area
 st.markdown("### 🔗 Paste one or more URLs")
@@ -24,7 +33,7 @@ if st.button("Scrape"):
 
             sections = soup.find_all("section")
             if not sections:
-                sections = [soup]  # fallback to full page if no section
+                sections = [soup]
 
             for section in sections:
                 section_class = " ".join(section.get("class", []))
@@ -33,13 +42,23 @@ if st.button("Scrape"):
                 for div in divs:
                     div_class = " ".join(div.get("class", []))
                     text = div.get_text(separator=" ", strip=True)
+
+                    # Match against block list
+                    matched_block = ""
+                    for known_block in block_list:
+                        if known_block in div_class:
+                            matched_block = known_block
+                            break
+
                     if text:
                         all_data.append({
                             "URL": url,
                             "Section class": section_class,
                             "Div class": div_class,
-                            "Div content": text
+                            "Div content": text,
+                            "Matched block name": matched_block
                         })
+
         except Exception as e:
             st.error(f"Error scraping {url}: {e}")
 
@@ -47,7 +66,6 @@ if st.button("Scrape"):
         df = pd.DataFrame(all_data)
         st.dataframe(df, use_container_width=True)
 
-        # Export
         filename = f"muuto_content_export_{datetime.now().strftime('%Y-%m-%d_%H-%M')}.xlsx"
         df.to_excel(filename, index=False)
         with open(filename, "rb") as f:
