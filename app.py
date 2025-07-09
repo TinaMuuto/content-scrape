@@ -5,15 +5,20 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import os
+from difflib import get_close_matches
 
 st.set_page_config(page_title="Muuto Content Extractor", layout="wide")
-st.title("🧱 Muuto Content Extractor with Block Matching")
+st.title("🧱 Muuto Content Extractor with Fuzzy Block Matching")
 
 # Load block list
 block_list = []
+cleaned_blocks_map = {}
 try:
     block_df = pd.read_excel("blokke.xlsx")
     block_list = block_df["Name"].dropna().unique().tolist()
+    for b in block_list:
+        cleaned = b.lower().replace("-", "").replace(":", "").replace(" ", "").strip()
+        cleaned_blocks_map[cleaned] = b
     st.success(f"✅ Loaded {len(block_list)} known block names from blokke.xlsx")
 except Exception as e:
     st.warning("⚠️ Could not load blokke.xlsx. Block matching will be skipped.")
@@ -21,6 +26,9 @@ except Exception as e:
 # Input area
 st.markdown("### 🔗 Paste one or more URLs")
 url_input = st.text_area("Enter one URL per line:", height=200)
+
+def clean(text):
+    return text.lower().replace("-", "").replace(":", "").replace(" ", "").strip()
 
 if st.button("Scrape"):
     urls = [url.strip() for url in url_input.splitlines() if url.strip()]
@@ -43,12 +51,12 @@ if st.button("Scrape"):
                     div_class = " ".join(div.get("class", []))
                     text = div.get_text(separator=" ", strip=True)
 
-                    # Match against block list
                     matched_block = ""
-                    for known_block in block_list:
-                        if known_block in div_class:
-                            matched_block = known_block
-                            break
+                    if block_list and div_class:
+                        cleaned_div = clean(div_class)
+                        matches = get_close_matches(cleaned_div, cleaned_blocks_map.keys(), n=1, cutoff=0.6)
+                        if matches:
+                            matched_block = cleaned_blocks_map[matches[0]]
 
                     if text:
                         all_data.append({
@@ -56,7 +64,7 @@ if st.button("Scrape"):
                             "Section class": section_class,
                             "Div class": div_class,
                             "Div content": text,
-                            "Matched block name": matched_block
+                            "Matched block name (fuzzy)": matched_block
                         })
 
         except Exception as e:
