@@ -1,10 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
-import os
 from difflib import get_close_matches
 
 st.set_page_config(page_title="Muuto Content Extractor", layout="wide")
@@ -19,8 +17,7 @@ try:
     for b in block_list:
         cleaned = b.lower().replace("-", "").replace(":", "").replace(" ", "").strip()
         cleaned_blocks_map[cleaned] = b
-    st.success(f"✅ Loaded {len(block_list)} known block names from blokke.xlsx")
-except Exception as e:
+except Exception:
     st.warning("⚠️ Could not load blokke.xlsx. Block matching will be skipped.")
 
 # Input area
