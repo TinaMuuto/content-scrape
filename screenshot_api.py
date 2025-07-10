@@ -15,7 +15,6 @@ def get_screenshot(url):
     }
     response = requests.get(api_url, params=params)
     if response.status_code == 200:
-        # Lav et filnavn baseret på URL
         filename = url.replace("https://", "").replace("http://", "").replace("/", "_").replace("?", "_") + ".png"
         with open(filename, "wb") as f:
             f.write(response.content)
