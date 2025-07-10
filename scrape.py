@@ -8,7 +8,7 @@ def load_known_blocks(filename="blokke.xlsx"):
     if not os.path.exists(filename):
         return []
     df = pd.read_excel(filename)
-    return df['Block Name'].dropna().tolist()
+    return df['block_name'].dropna().tolist()
 
 def fuzzy_match_block(class_name, known_blocks):
     if not class_name:
