@@ -7,4 +7,5 @@ openpyxl
 pyairtable
 cloudinary
 tqdm
+python-slugify
 python-dotenv
