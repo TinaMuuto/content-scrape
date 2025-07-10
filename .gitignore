@@ -13,3 +13,6 @@ __pycache__/
 # Eventuelle lokale notes/txt-filer
 *.log
 *.local
+
+.streamlit/secrets.toml
+
