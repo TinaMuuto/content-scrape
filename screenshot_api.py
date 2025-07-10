@@ -1,6 +1,6 @@
 import requests
 
-API_TOKEN = "M2AVWCF-BNJ4RVN-N06J4AV-30BR8RF"
+API_TOKEN = "YOUR_SCREENSHOTAPI_TOKEN"  # Replace with your ScreenshotAPI token
 
 def get_screenshot(url):
     api_url = "https://shot.screenshotapi.net/screenshot"
