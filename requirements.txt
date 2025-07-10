@@ -3,8 +3,8 @@ pandas
 requests
 beautifulsoup4
 openpyxl
-pyairtable
 cloudinary
-tqdm
-python-slugify
 python-dotenv
+tqdm
+pyairtable
+difflib
