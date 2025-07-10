@@ -1,91 +1,66 @@
 # scrape.py
 import os
-import time
-import re
-import cloudinary.uploader
 import pandas as pd
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
+from slugify import slugify
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
 
-# Opsæt Cloudinary fra miljøvariabel eller direkte
-cloudinary.config(
-    cloud_name="dpxvyvnp5",
-    api_key="669775592555366",
-    api_secret="cJtkQkb_H8P5RFDIt4my7WFc2S0",
-    secure=True
-)
+load_dotenv()
+cloudinary.config(secure=True)
 
-def clean_text(text):
-    return re.sub(r'\s+', ' ', text).strip()
-
-def extract_blocks_from_html(html, url, known_blocks):
-    soup = BeautifulSoup(html, 'html.parser')
-    rows = []
-    sections = soup.find_all(['section', 'div'])
-    
-    for sec in sections:
-        if not isinstance(sec, (BeautifulSoup.Tag,)):
-            continue
-
-        sec_class = ' '.join(sec.get('class', []))
-        parent_class = sec_class if sec.name == 'section' else ''
-
-        if sec.name == 'div' or sec.find_all('div'):
-            for div in sec.find_all('div'):
-                div_class = ' '.join(div.get('class', []))
-                div_content = clean_text(div.get_text(separator=' ', strip=True))
-                match = ''
-                for known in known_blocks:
-                    if known.lower() in div_class.lower():
-                        match = known
-                        break
-                rows.append({
-                    'URL': url,
-                    'Section/Div type': sec.name,
-                    'Section class': parent_class,
-                    'Div class': div_class,
-                    'Content': div_content,
-                    'Matched block name': match
-                })
-
-    return rows
-
-def upload_screenshot_to_cloudinary(path, url):
-    url_slug = re.sub(r'\W+', '-', urlparse(url).path.strip('/'))
-    upload = cloudinary.uploader.upload(path, public_id=f"muuto_screenshots/{url_slug}", overwrite=True)
-    return upload['secure_url']
-
-def scrape_urls(urls, known_blocks):
+def scrape_urls(urls, cleaned_blocks_map):
     all_data = []
-    screenshots = {}
+    screenshot_paths = []
 
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page()
-
         for url in urls:
             try:
+                page_slug = slugify(url)
+                context = browser.new_context()
+                page = context.new_page()
                 page.goto(url, timeout=60000)
-                time.sleep(2)
+                page.wait_for_timeout(2000)
 
-                html = page.content()
-
-                screenshot_path = f"/tmp/screenshot_{re.sub(r'\W+', '-', urlparse(url).path)}.png"
+                screenshot_path = f"screenshots/{page_slug}.png"
+                os.makedirs("screenshots", exist_ok=True)
                 page.screenshot(path=screenshot_path, full_page=True)
+                screenshot_paths.append(screenshot_path)
 
-                cloud_url = upload_screenshot_to_cloudinary(screenshot_path, url)
-                screenshots[url] = cloud_url
+                uploaded = cloudinary.uploader.upload(screenshot_path)
+                screenshot_url = uploaded["secure_url"]
 
-                blocks = extract_blocks_from_html(html, url, known_blocks)
-                for block in blocks:
-                    block['Screenshot URL'] = cloud_url
-                all_data.extend(blocks)
+                soup = BeautifulSoup(page.content(), "html.parser")
+                sections = soup.find_all("section")
+                if not sections:
+                    sections = [soup]
 
+                for section in sections:
+                    section_class = " ".join(section.get("class", []))
+                    divs = section.find_all("div")
+                    for div in divs:
+                        div_class = " ".join(div.get("class", []))
+                        text = div.get_text(separator=" ", strip=True)
+                        matched_block = ""
+                        cleaned = div_class.lower().replace("-", "").replace(":", "").replace(" ", "").strip()
+                        matches = [k for k in cleaned_blocks_map if k in cleaned]
+                        if matches:
+                            matched_block = cleaned_blocks_map[matches[0]]
+
+                        if text:
+                            all_data.append({
+                                "URL": url,
+                                "Screenshot URL": screenshot_url,
+                                "HTML Element Type": "div",
+                                "HTML Class": div_class,
+                                "Text Content": text,
+                                "Matched Block Name": matched_block
+                            })
             except Exception as e:
-                print(f"❌ Error at {url}: {e}")
-
+                print(f"Fejl ved {url}: {e}")
         browser.close()
-
     df = pd.DataFrame(all_data)
-    return df
+    return df, screenshot_paths
