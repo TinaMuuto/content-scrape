@@ -1,18 +1,6 @@
-# Python bytecode og cache
 __pycache__/
 *.pyc
-
-# Streamlit config/secrets
-.streamlit/secrets.toml
-
-# Følsomme miljøfiler (må aldrig i git)
 .env
 .env.*
 .DS_Store
-
-# Eventuelle lokale notes/txt-filer
-*.log
-*.local
-
 .streamlit/secrets.toml
-
