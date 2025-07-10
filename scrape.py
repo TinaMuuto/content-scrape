@@ -14,7 +14,7 @@ def fuzzy_match_block(class_name, known_blocks):
     if not class_name:
         return ""
     match = process.extractOne(class_name, known_blocks)
-    if match and match[1] > 70:  # Threshold for fuzzy matching
+    if match and match[1] > 70:
         return match[0]
     return ""
 
@@ -33,17 +33,14 @@ def scrape_urls(urls):
                 class_name = " ".join(el.get('class', []))
                 matched_block = fuzzy_match_block(class_name, known_blocks)
                 
-                # Get text content, including href/src as text references
                 text_content = el.get_text(separator=" ", strip=True)
-                # Optionally, include href/src attributes as plain text here (or extend as needed)
                 
                 rows.append({
                     "URL": url,
                     "HTML Element Type": el.name,
                     "HTML Class": class_name,
                     "Text Content": text_content,
-                    "Matched Block Name": matched_block,
-                    "Screenshot URL": ""  # No screenshots
+                    "Matched Block Name": matched_block
                 })
 
         except Exception as e:
@@ -52,8 +49,7 @@ def scrape_urls(urls):
                 "HTML Element Type": "",
                 "HTML Class": "",
                 "Text Content": f"Error: {e}",
-                "Matched Block Name": "",
-                "Screenshot URL": ""
+                "Matched Block Name": ""
             })
 
     return pd.DataFrame(rows)
