@@ -1,9 +1,9 @@
 import streamlit as st
 from scrape import scrape_urls
 import io
-import airtable_upload
+import pandas as pd
 
-st.title("Muuto Content Extractor")
+st.title("URL Content Extractor")
 
 urls = st.text_area("Enter one URL per line")
 
@@ -20,12 +20,13 @@ if st.button("Run scraping"):
         st.download_button(
             label="Download Excel",
             data=output.getvalue(),
-            file_name="output.xlsx",
+            file_name="muuto_content_output.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 if st.button("Upload to Airtable"):
     if 'df' in locals() and not df.empty:
+        import airtable_upload
         airtable_upload.upload_to_airtable(df)
         st.success("Upload to Airtable completed!")
     else:
