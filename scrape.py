@@ -4,6 +4,7 @@ import pandas as pd
 from screenshot_api import get_screenshot
 from cloudinary_upload import upload_to_cloudinary
 import difflib
+import os
 
 def load_blocks(filename="blokke.xlsx"):
     df = pd.read_excel(filename)
@@ -32,7 +33,15 @@ def scrape_urls(urls):
     rows = []
     for url in urls:
         screenshot_path = get_screenshot(url)
-        screenshot_url = upload_to_cloudinary(screenshot_path) if screenshot_path else ""
+        print(f"DEBUG for {url}: screenshot_path = {screenshot_path}")   # DEBUG PRINT
+
+        if screenshot_path and os.path.exists(screenshot_path):
+            screenshot_url = upload_to_cloudinary(screenshot_path)
+            print(f"DEBUG for {url}: screenshot_url = {screenshot_url}")  # DEBUG PRINT
+        else:
+            print(f"DEBUG for {url}: No screenshot path found or file does not exist!")  # DEBUG PRINT
+            screenshot_url = ""
+
         try:
             html = requests.get(url, timeout=10).text
             soup = BeautifulSoup(html, "html.parser")
