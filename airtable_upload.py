@@ -1,12 +1,22 @@
-from pyairtable import Table
 import os
+from pyairtable import Table
 
-API_KEY = os.environ.get("AIRTABLE_API_KEY")
-BASE_ID = os.environ.get("AIRTABLE_BASE_ID")
+AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
+AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 TABLE_NAME = "muuto_content"
 
 def upload_to_airtable(df):
-    table = Table(API_KEY, BASE_ID, TABLE_NAME)
-    for record in df.to_dict(orient='records'):
-        safe_record = {k: str(v) if isinstance(v, (list, dict)) else v for k, v in record.items()}
-        table.create(safe_record)
+    if not AIRTABLE_API_KEY or not AIRTABLE_BASE_ID:
+        raise Exception("Airtable API key or Base ID not set in environment variables")
+    
+    table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, TABLE_NAME)
+    
+    for _, row in df.iterrows():
+        record = {
+            "URL": row.get("URL", ""),
+            "HTML Element Type": row.get("HTML Element Type", ""),
+            "HTML Class": row.get("HTML Class", ""),
+            "Text Content": row.get("Text Content", ""),
+            "Matched Block Name": row.get("Matched Block Name", "")
+        }
+        table.create(record)
