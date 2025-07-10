@@ -1,14 +1,56 @@
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
 from screenshot_api import get_screenshot
+from cloudinary_upload import upload_to_cloudinary
+import difflib
+
+def load_blocks(filename="blokke.xlsx"):
+    df = pd.read_excel(filename)
+    blocks = df.iloc[:, 0].dropna().tolist()
+    return blocks
+
+blocks = load_blocks()
+
+def fuzzy_match(class_name):
+    matches = difflib.get_close_matches(class_name, blocks, n=1, cutoff=0.7)
+    return matches[0] if matches else ""
 
 def scrape_urls(urls):
-    """
-    Scraper kun screenshots (tilpas hvis du også vil scrape tekst/data)
-    """
-    screenshot_paths = []
+    rows = []
     for url in urls:
+        # Screenshot + upload
         screenshot_path = get_screenshot(url)
-        screenshot_paths.append(screenshot_path)
-    # Lav dummy df (tilpas til dit projekt hvis du har mere data)
-    df = pd.DataFrame({'URL': urls, 'Screenshot': screenshot_paths})
-    return df, screenshot_paths
+        screenshot_url = upload_to_cloudinary(screenshot_path) if screenshot_path else ""
+
+        try:
+            html = requests.get(url, timeout=10).text
+            soup = BeautifulSoup(html, "html.parser")
+        except Exception as e:
+            print(f"Error scraping {url}: {e}")
+            continue
+
+        # For alle relevante elementtyper
+        for elem in soup.find_all(['div', 'section', 'img', 'a', 'video', 'source']):
+            tag_type = elem.name
+            class_str = " ".join(elem.get('class', [])) if elem.has_attr('class') else ""
+            text = elem.get_text(separator=" ", strip=True)
+            src = elem.get('src') if elem.has_attr('src') else ""
+            href = elem.get('href') if elem.has_attr('href') else ""
+            poster = elem.get('poster') if elem.has_attr('poster') else ""
+
+            matched_block = fuzzy_match(class_str) if tag_type in ["div", "section"] else ""
+
+            rows.append({
+                "URL": url,
+                "Screenshot URL": screenshot_url,
+                "HTML Element Type": tag_type,
+                "HTML Class": class_str,
+                "Text Content": text,
+                "Src": src,
+                "Href": href,
+                "Poster": poster,
+                "Matched Block Name": matched_block
+            })
+    df = pd.DataFrame(rows)
+    return df
