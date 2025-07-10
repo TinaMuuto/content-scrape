@@ -7,4 +7,3 @@ cloudinary
 python-dotenv
 tqdm
 pyairtable
-difflib
