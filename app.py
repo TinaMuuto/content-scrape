@@ -50,5 +50,32 @@ if st.session_state.df_assets is not None and not st.session_state.df_assets.emp
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# Note: The Airtable upload would need to be adapted to handle two tables.
-# This example focuses on generating and displaying the inventories.
+# In app.py, at the end of the file
+
+import airtable_upload # Make sure this is imported at the top
+
+# --- Upload Buttons ---
+st.subheader("Upload to Airtable")
+
+# Create two columns for the buttons to sit side-by-side
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("Upload Content Inventory"):
+        if st.session_state.df_content is not None and not st.session_state.df_content.empty:
+            with st.spinner("Uploading content blocks..."):
+                # Call the function with the content dataframe and table name
+                airtable_upload.upload_to_airtable(st.session_state.df_content, "muuto_content")
+            st.success("Content inventory uploaded!")
+        else:
+            st.warning("No content data to upload.")
+
+with col2:
+    if st.button("Upload Asset Inventory"):
+        if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
+            with st.spinner("Uploading assets..."):
+                # Call the function with the asset dataframe and the NEW table name
+                airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
+            st.success("Asset inventory uploaded!")
+        else:
+            st.warning("No asset data to upload.")
