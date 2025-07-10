@@ -1,7 +1,8 @@
-from pyairtable import Table
 import os
-import pandas as pd # Import pandas
+import pandas as pd
+from pyairtable import Table
 
+# These are loaded from your environment variables (e.g., Streamlit Secrets)
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
 AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
@@ -13,6 +14,10 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str):
         df (pd.DataFrame): The DataFrame to upload.
         table_name (str): The name of the target table in Airtable.
     """
+    if not all([AIRTABLE_API_KEY, AIRTABLE_BASE_ID]):
+        print("Error: Airtable API Key or Base ID is not configured.")
+        return
+
     # Rename columns to be more Airtable-friendly (removes special characters)
     df = df.rename(columns={
         "Metadata (Link Text)": "Metadata",
@@ -24,7 +29,7 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str):
     table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, table_name)
 
     try:
-        # Use batch_create for efficient uploading
+        # Use batch_create for efficient uploading of multiple records
         table.batch_create(records)
         print(f"Successfully uploaded {len(records)} records to '{table_name}'.")
     except Exception as e:
