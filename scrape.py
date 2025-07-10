@@ -1,65 +1,59 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from screenshot_api import get_screenshot
-from cloudinary_upload import upload_to_cloudinary
-import difflib
+from fuzzywuzzy import process
 import os
 
-def load_blocks(filename="blokke.xlsx"):
+def load_known_blocks(filename="blokke.xlsx"):
+    if not os.path.exists(filename):
+        return []
     df = pd.read_excel(filename)
-    blocks = df.iloc[:, 0].dropna().tolist()
-    return blocks
+    return df['Block Name'].dropna().tolist()
 
-blocks = load_blocks()
-
-def fuzzy_match(class_name):
-    matches = difflib.get_close_matches(class_name, blocks, n=1, cutoff=0.7)
-    return matches[0] if matches else ""
-
-def extract_element_content(elem):
-    if elem.name == "a" and elem.has_attr("href"):
-        return f"{elem.get_text(strip=True)} (href: {elem['href']})"
-    if elem.name in ["img", "source", "video"]:
-        content = []
-        if elem.has_attr("src"):
-            content.append(f"src: {elem['src']}")
-        if elem.name == "video" and elem.has_attr("poster"):
-            content.append(f"poster: {elem['poster']}")
-        return ", ".join(content)
-    return elem.get_text(strip=True)
+def fuzzy_match_block(class_name, known_blocks):
+    if not class_name:
+        return ""
+    match = process.extractOne(class_name, known_blocks)
+    if match and match[1] > 70:  # Threshold for fuzzy matching
+        return match[0]
+    return ""
 
 def scrape_urls(urls):
+    known_blocks = load_known_blocks()
     rows = []
+
     for url in urls:
-        screenshot_path = get_screenshot(url)
-        print(f"DEBUG for {url}: screenshot_path = {screenshot_path}")   # DEBUG PRINT
-
-        if screenshot_path and os.path.exists(screenshot_path):
-            screenshot_url = upload_to_cloudinary(screenshot_path)
-            print(f"DEBUG for {url}: screenshot_url = {screenshot_url}")  # DEBUG PRINT
-        else:
-            print(f"DEBUG for {url}: No screenshot path found or file does not exist!")  # DEBUG PRINT
-            screenshot_url = ""
-
         try:
-            html = requests.get(url, timeout=10).text
-            soup = BeautifulSoup(html, "html.parser")
+            resp = requests.get(url, timeout=10)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            
+            elements = soup.find_all(['div', 'section', 'article'])
+            for el in elements:
+                class_name = " ".join(el.get('class', []))
+                matched_block = fuzzy_match_block(class_name, known_blocks)
+                
+                # Get text content, including href/src as text references
+                text_content = el.get_text(separator=" ", strip=True)
+                # Optionally, include href/src attributes as plain text here (or extend as needed)
+                
+                rows.append({
+                    "URL": url,
+                    "HTML Element Type": el.name,
+                    "HTML Class": class_name,
+                    "Text Content": text_content,
+                    "Matched Block Name": matched_block,
+                    "Screenshot URL": ""  # No screenshots
+                })
+
         except Exception as e:
-            print(f"Error scraping {url}: {e}")
-            continue
-        for elem in soup.find_all(['div', 'section', 'img', 'a', 'video', 'source']):
-            tag_type = elem.name
-            class_str = " ".join(elem.get('class', [])) if elem.has_attr('class') else ""
-            element_content = extract_element_content(elem)
-            matched_block = fuzzy_match(class_str) if tag_type in ["div", "section"] else ""
             rows.append({
                 "URL": url,
-                "Screenshot URL": screenshot_url,
-                "HTML Element Type": tag_type,
-                "HTML Class": class_str,
-                "Element Content": element_content,
-                "Matched Block Name": matched_block
+                "HTML Element Type": "",
+                "HTML Class": "",
+                "Text Content": f"Error: {e}",
+                "Matched Block Name": "",
+                "Screenshot URL": ""
             })
-    df = pd.DataFrame(rows)
-    return df
+
+    return pd.DataFrame(rows)
