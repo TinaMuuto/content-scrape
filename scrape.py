@@ -1,22 +1,11 @@
 import requests
-from bs4 import BeautifulSoup
 import pandas as pd
+from bs4 import BeautifulSoup
 from fuzzywuzzy import process
-import os
 
-def load_known_blocks(filename="blokke.xlsx"):
-    if not os.path.exists(filename):
-        return []
-    df = pd.read_excel(filename)
+def load_known_blocks():
+    df = pd.read_excel("blokke.xlsx")
     return df['block_name'].dropna().tolist()
-
-def fuzzy_match_block(class_name, known_blocks):
-    if not class_name:
-        return ""
-    match = process.extractOne(class_name, known_blocks)
-    if match and match[1] > 70:
-        return match[0]
-    return ""
 
 def scrape_urls(urls):
     known_blocks = load_known_blocks()
@@ -24,32 +13,47 @@ def scrape_urls(urls):
 
     for url in urls:
         try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            
-            elements = soup.find_all(['div', 'section', 'article'])
-            for el in elements:
-                class_name = " ".join(el.get('class', []))
-                matched_block = fuzzy_match_block(class_name, known_blocks)
-                
-                text_content = el.get_text(separator=" ", strip=True)
-                
-                rows.append({
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Find ALLE HTML-elementer (undtagen scripts og styles)
+            elements = [el for el in soup.find_all(True) if el.name not in ['script', 'style', 'meta', 'link']]
+
+            for element in elements:
+                classes = element.get('class', [])
+                class_str = " ".join(classes) if classes else ""
+
+                # Fuzzy match
+                matched_block = ""
+                if class_str:
+                    matches = process.extract(class_str, known_blocks, limit=1)
+                    if matches and matches[0][1] > 70:
+                        matched_block = matches[0][0]
+
+                # Links og billeder i elementet
+                links = [a.get('href') for a in element.find_all('a', href=True)]
+                images = [img.get('src') for img in element.find_all('img', src=True)]
+
+                links_str = ", ".join(links) if links else ""
+                images_str = ", ".join(images) if images else ""
+
+                # Tekstindhold (fjerner nye linjer og trim)
+                text_content = element.get_text(separator=" ", strip=True)
+
+                row = {
                     "URL": url,
-                    "HTML Element Type": el.name,
-                    "HTML Class": class_name,
+                    "HTML Element Type": element.name,
+                    "HTML Class": class_str,
                     "Text Content": text_content,
+                    "Links": links_str,
+                    "Images": images_str,
                     "Matched Block Name": matched_block
-                })
+                }
+                rows.append(row)
 
         except Exception as e:
-            rows.append({
-                "URL": url,
-                "HTML Element Type": "",
-                "HTML Class": "",
-                "Text Content": f"Error: {e}",
-                "Matched Block Name": ""
-            })
+            print(f"Error scraping {url}: {e}")
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    return df
