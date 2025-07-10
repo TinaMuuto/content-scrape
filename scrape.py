@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from fuzzywuzzy import process
 from airtable_upload import upload_to_airtable
+from urllib.parse import urljoin # Import urljoin
+import os
 
 def load_known_blocks():
     df = pd.read_excel("blokke.xlsx")
@@ -10,7 +12,11 @@ def load_known_blocks():
 
 def scrape_urls(urls):
     known_blocks = load_known_blocks()
-    rows = []
+    content_rows = []
+    asset_rows = [] # New list for assets
+
+    # Define the file extensions you want to find
+    asset_extensions = ['.pdf', '.docx', '.xlsx', '.zip', '.jpg', '.jpeg', '.png', '.svg', '.gif']
 
     for url in urls:
         try:
@@ -18,46 +24,52 @@ def scrape_urls(urls):
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Find alle relevante tags
-            elements = soup.find_all(['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img'])
-
+            # --- 1. Original Content Block Scraping ---
+            elements = soup.find_all(['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
             for el in elements:
-                el_type = el.name
+                # (This part of the logic remains the same as before)
                 el_class = " ".join(el.get("class", []))
-                text = el.get_text(separator=" ", strip=True)
-
-                # Udtræk links og images hvis relevant
-                links = ""
-                images = ""
-
-                if el_type == "a":
-                    links = el.get("href", "")
-                elif el_type == "img":
-                    images = el.get("src", "")
-                else:
-                    # Hvis andre tags, find links og billeder inde i elementet
-                    a_tags = el.find_all("a")
-                    links = ", ".join([a.get("href", "") for a in a_tags if a.get("href")])
-                    img_tags = el.find_all("img")
-                    images = ", ".join([img.get("src", "") for img in img_tags if img.get("src")])
-
-                # Match bloknavn med fuzzy logic
                 matched_block = ""
                 if el_class:
                     match = process.extractOne(el_class, known_blocks, score_cutoff=80)
                     if match:
                         matched_block = match[0]
-
-                rows.append({
+                
+                content_rows.append({
                     "URL": url,
-                    "HTML Element Type": el_type,
+                    "HTML Element Type": el.name,
                     "HTML Class": el_class,
-                    "Text Content": text,
-                    "Links": links,
-                    "Images": images,
+                    "Text Content": el.get_text(separator=" ", strip=True),
                     "Matched Block Name": matched_block,
                 })
+
+            # --- 2. New Asset Scraping Logic ---
+            # Find all links
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag['href']
+                # Check if the link points to one of our target file types
+                if any(href.lower().endswith(ext) for ext in asset_extensions):
+                    asset_url = urljoin(url, href) # Create an absolute URL
+                    asset_rows.append({
+                        "Source Page URL": url,
+                        "Asset URL": asset_url,
+                        "Asset Type": os.path.splitext(href)[1].lower(), # Get file extension
+                        "Metadata (Link Text)": a_tag.get_text(strip=True)
+                    })
+            
+            # Find all images
+            for img_tag in soup.find_all("img", src=True):
+                src = img_tag['src']
+                asset_url = urljoin(url, src) # Create an absolute URL
+                asset_rows.append({
+                    "Source Page URL": url,
+                    "Asset URL": asset_url,
+                    "Asset Type": "image",
+                    "Metadata (Alt Text)": img_tag.get('alt', 'N/A') # Get alt text
+                })
+
         except Exception as e:
             print(f"Error scraping {url}: {e}")
-
-    return pd.DataFrame(rows)
+    
+    # Return two separate dataframes
+    return pd.DataFrame(content_rows), pd.DataFrame(asset_rows)
