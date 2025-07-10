@@ -2,7 +2,6 @@ streamlit
 pandas
 requests
 beautifulsoup4
-playwright
 openpyxl
 pyairtable
 cloudinary
