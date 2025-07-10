@@ -1,55 +1,48 @@
-import requests
-from bs4 import BeautifulSoup
+import streamlit as st
 import pandas as pd
-from urllib.parse import urljoin
-import os
+import io
+from scrape import scrape_urls
+import airtable_upload
 
-def scrape_urls(urls):
-    """
-    Scrapes a list of URLs for all major HTML tags and combines all information
-    into a single list.
+st.set_page_config(layout="wide")
+st.title("HTML Content Extractor")
 
-    Returns:
-        A single pandas DataFrame with all found tags and their content.
-    """
-    rows = []
-    # A broad list of tags to capture most of the page content
-    tags_to_find = ['div', 'section', 'article', 'main', 'header', 'footer', 'p',
-                    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img']
+# Initialize session_state for a single dataframe
+if 'df_results' not in st.session_state:
+    st.session_state.df_results = None
 
-    for url in urls:
-        print(f"Scraping URL: {url}")
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
+urls = st.text_area("Enter one URL per line", height=100)
 
-            elements = soup.find_all(tags_to_find)
+if st.button("Run Scraping"):
+    url_list = [url.strip() for url in urls.splitlines() if url.strip()]
+    if url_list:
+        with st.spinner("Scraping URLs... This may be slow due to the amount of data."):
+            # The scraper now returns only one dataframe
+            st.session_state.df_results = scrape_urls(url_list)
+        st.success("Scraping complete!")
+    else:
+        st.warning("Please enter at least one URL.")
 
-            for el in elements:
-                # Find all links within the current element
-                a_tags = el.find_all("a", href=True)
-                links = ", ".join([urljoin(url, a.get("href", "")) for a in a_tags])
+# Display the results from the single dataframe
+if st.session_state.df_results is not None and not st.session_state.df_results.empty:
+    st.info(f"Found {len(st.session_state.df_results)} HTML elements.")
+    st.dataframe(st.session_state.df_results)
 
-                # Find all images (including lazy-loaded) within the current element
-                img_tags = el.find_all("img")
-                images = ", ".join([
-                    urljoin(url, img.get('data-src') or img.get('src', ''))
-                    for img in img_tags if img.get('data-src') or img.get('src')
-                ])
+    # Single download button
+    output = io.BytesIO()
+    st.session_state.df_results.to_excel(output, index=False)
+    st.download_button(
+        label="Download Results (Excel)",
+        data=output.getvalue(),
+        file_name="all_html_output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-                # Append all info to a single list
-                rows.append({
-                    "URL": url,
-                    "HTML Element Type": el.name,
-                    "HTML Class": " ".join(el.get("class", [])),
-                    "Text Content": el.get_text(separator=" ", strip=True),
-                    "Links": links,
-                    "Images": images,
-                })
-
-        except requests.exceptions.RequestException as e:
-            print(f"Error scraping {url}: {e}")
-
-    # Return a single DataFrame
-    return pd.DataFrame(rows)
+    # Single upload button
+    st.subheader("📤 Upload to Airtable")
+    if st.button("Upload to Airtable"):
+        # You will need an Airtable table with columns matching the output
+        # e.g., URL, HTML Element Type, HTML Class, Text Content, Links, Images
+        with st.spinner("Uploading to Airtable..."):
+            airtable_upload.upload_to_airtable(st.session_state.df_results, "All HTML Content")
+        st.success("Upload complete!")
