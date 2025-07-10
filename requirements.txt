@@ -4,6 +4,6 @@ requests
 beautifulsoup4
 openpyxl
 python-dotenv
-fuzzywuzzy
-python-levenshtein
+fuzzywuzzy[speedup]
 pyairtable
+tqdm
