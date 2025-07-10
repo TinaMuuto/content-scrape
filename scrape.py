@@ -1,7 +1,8 @@
 import requests
-import pandas as pd
 from bs4 import BeautifulSoup
+import pandas as pd
 from fuzzywuzzy import process
+from airtable_upload import upload_to_airtable
 
 def load_known_blocks():
     df = pd.read_excel("blokke.xlsx")
@@ -17,43 +18,46 @@ def scrape_urls(urls):
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
 
-            # Find ALLE HTML-elementer (undtagen scripts og styles)
-            elements = [el for el in soup.find_all(True) if el.name not in ['script', 'style', 'meta', 'link']]
+            # Find alle relevante tags
+            elements = soup.find_all(['div', 'section', 'article', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'img'])
 
-            for element in elements:
-                classes = element.get('class', [])
-                class_str = " ".join(classes) if classes else ""
+            for el in elements:
+                el_type = el.name
+                el_class = " ".join(el.get("class", []))
+                text = el.get_text(separator=" ", strip=True)
 
-                # Fuzzy match
+                # Udtræk links og images hvis relevant
+                links = ""
+                images = ""
+
+                if el_type == "a":
+                    links = el.get("href", "")
+                elif el_type == "img":
+                    images = el.get("src", "")
+                else:
+                    # Hvis andre tags, find links og billeder inde i elementet
+                    a_tags = el.find_all("a")
+                    links = ", ".join([a.get("href", "") for a in a_tags if a.get("href")])
+                    img_tags = el.find_all("img")
+                    images = ", ".join([img.get("src", "") for img in img_tags if img.get("src")])
+
+                # Match bloknavn med fuzzy logic
                 matched_block = ""
-                if class_str:
-                    matches = process.extract(class_str, known_blocks, limit=1)
-                    if matches and matches[0][1] > 70:
-                        matched_block = matches[0][0]
+                if el_class:
+                    match = process.extractOne(el_class, known_blocks, score_cutoff=80)
+                    if match:
+                        matched_block = match[0]
 
-                # Links og billeder i elementet
-                links = [a.get('href') for a in element.find_all('a', href=True)]
-                images = [img.get('src') for img in element.find_all('img', src=True)]
-
-                links_str = ", ".join(links) if links else ""
-                images_str = ", ".join(images) if images else ""
-
-                # Tekstindhold (fjerner nye linjer og trim)
-                text_content = element.get_text(separator=" ", strip=True)
-
-                row = {
+                rows.append({
                     "URL": url,
-                    "HTML Element Type": element.name,
-                    "HTML Class": class_str,
-                    "Text Content": text_content,
-                    "Links": links_str,
-                    "Images": images_str,
-                    "Matched Block Name": matched_block
-                }
-                rows.append(row)
-
+                    "HTML Element Type": el_type,
+                    "HTML Class": el_class,
+                    "Text Content": text,
+                    "Links": links,
+                    "Images": images,
+                    "Matched Block Name": matched_block,
+                })
         except Exception as e:
             print(f"Error scraping {url}: {e}")
 
-    df = pd.DataFrame(rows)
-    return df
+    return pd.DataFrame(rows)
