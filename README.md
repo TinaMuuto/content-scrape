@@ -1,20 +1,11 @@
-# Muuto Content Scraper (Streamlit)
+# Muuto Content Extractor
 
-A lightweight web app to:
-- Paste or load URLs
-- Extract structured content from pages
-- View blocks, divs, sections, text and screenshots
-- Export to Excel and optionally send to Airtable
+Extracts and analyzes website content structure, saves screenshots to Cloudinary, and exports data to Excel or Airtable.
 
-## How to use
+## Setup
 
-1. Fork or clone this repo.
-2. Deploy via [Streamlit Cloud](https://share.streamlit.io).
-3. Paste URLs in the app or upload a .txt file.
-4. Review and export content.
-
----
-By default, includes support for:
-- `div`, `section`, and known block matching
-- Airtable export (requires API key)
-- Optional screenshots via Playwright
+1. Clone this repo
+2. Create `.env` from `.env.template`
+3. Install requirements: `pip install -r requirements.txt`
+4. Install Playwright: `playwright install`
+5. Run app: `streamlit run app.py`
