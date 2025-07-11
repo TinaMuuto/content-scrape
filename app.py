@@ -1,104 +1,141 @@
-import requests
-from bs4 import BeautifulSoup, Tag
+import streamlit as st
 import pandas as pd
-from urllib.parse import urljoin
-import os
-import copy
+import io
+from scrape import scrape_urls
+import airtable_upload
 
-TARGET_BLOCK_CLASSES = [
-    'section', 'hero', 'pdp__gallery', 'pdp__details', 'accordion', 
-    'product-tile', 'inspiration-tile-v2', 'category-tile', 'article-content',
-    'configurator', 'room-explorer', 'meet-designer', 'usp-spot-banner', 'module'
-]
+# 1. SET PAGE CONFIG
+st.set_page_config(
+    layout="wide",
+    page_title="Content & Asset Extractor"
+)
 
-def get_asset_file_size(asset_url):
-    try:
-        response = requests.head(asset_url, timeout=5, allow_redirects=True)
-        response.raise_for_status()
-        size_in_bytes = int(response.headers.get('Content-Length', 0))
-        if size_in_bytes == 0: return 'N/A'
-        return f"{round(size_in_bytes / 1024, 2)} KB"
-    except requests.exceptions.RequestException:
-        return 'N/A'
+# 2. CUSTOM CSS
+st.markdown("""
+<style>
+    .stTextArea textarea { background-color: #EFEEEB !important; }
+    .stFileUploader section { background-color: #EFEEEB; border: 2px dashed #D3D3D3; }
+    .stToggle div[data-baseweb="toggle"] input:checked + div { background-color: #4CAF50 !important; }
+    .stButton button[kind="primary"] { background-color: #000000 !important; color: #FFFFFF !important; border: 1px solid #000000 !important; }
+    .stButton button[kind="primary"]:hover { background-color: #333333 !important; border-color: #333333 !important; color: #FFFFFF !important; }
+    .stButton button[kind="secondary"], [data-testid="stDownloadButton"] button { border-color: #000000 !important; color: #000000 !important; background-color: #FFFFFF !important; }
+    .stButton button[kind="secondary"]:hover, [data-testid="stDownloadButton"] button:hover { border-color: #000000 !important; background-color: #EFEEEB !important; color: #000000 !important; }
+    div[data-testid="stVerticalBlock"] div.element-container:has(button[kind="primary"]){ display: flex; flex-direction: column; justify-content: flex-end; height: 100%; padding-bottom: 0.6rem; }
+</style>
+""", unsafe_allow_html=True)
 
-def scrape_urls(urls, full_assets=False):
-    content_rows = []
-    asset_rows = []
-    asset_extensions = ['.pdf', '.docx', '.xlsx', '.zip', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.webp']
-    content_selector = ", ".join([f".{cls}" for cls in TARGET_BLOCK_CLASSES])
 
-    for url in urls:
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, "html.parser")
-            
-            # --- NEW: Keep track of assets already found on THIS page ---
-            found_asset_urls = set()
+# 3. SESSION STATE INITIALIZATION
+if 'df_content' not in st.session_state:
+    st.session_state.df_content = None
+if 'df_assets' not in st.session_state:
+    st.session_state.df_assets = None
+if 'urls_from_file' not in st.session_state:
+    st.session_state.urls_from_file = ""
 
-            def get_size(asset_url):
-                return get_asset_file_size(asset_url) if full_assets else 'N/A'
 
-            # --- ASSET SCRAPING (with de-duplication) ---
-            for a_tag in soup.find_all("a", href=True):
-                if any(a_tag['href'].lower().endswith(ext) for ext in asset_extensions):
-                    asset_url = urljoin(url, a_tag['href'])
-                    # --- NEW: Check if we have already scraped this asset URL ---
-                    if asset_url in found_asset_urls:
-                        continue
-                    
-                    asset_rows.append({
-                        "Source Page URL": url, "Asset URL": asset_url, "Asset Type": os.path.splitext(a_tag['href'])[1].lower(),
-                        "Link Text": a_tag.get_text(strip=True), "CSS Classes": " ".join(a_tag.get("class", [])),
-                        "HTML ID": a_tag.get("id", "N/A"), "File Size": get_size(asset_url)
-                    })
-                    found_asset_urls.add(asset_url) # Add the URL to our set
+# 4. APP TITLE & INTRODUCTION
+st.title("Content & Asset Extractor")
+st.write("To begin, either paste URLs directly into the text box or upload an Excel file containing a list of URLs in the first column. The app will automatically extract valid URLs starting with 'https://' or 'http://'.")
 
-            for img_tag in soup.find_all("img"):
-                image_source = img_tag.get('data-src') or img_tag.get('src')
-                if image_source:
-                    asset_url = urljoin(url, image_source)
-                    # --- NEW: Check if we have already scraped this asset URL ---
-                    if asset_url in found_asset_urls:
-                        continue
 
-                    asset_rows.append({
-                        "Source Page URL": url, "Asset URL": asset_url, "Asset Type": "image",
-                        "Alt Text": img_tag.get('alt', 'N/A'), "Image Title": img_tag.get('title', 'N/A'),
-                        "CSS Classes": " ".join(img_tag.get("class", [])), "HTML ID": img_tag.get("id", "N/A"),
-                        "Responsive Sources (srcset)": img_tag.get("srcset", "N/A"), "File Size": get_size(asset_url)
-                    })
-                    found_asset_urls.add(asset_url) # Add the URL to our set
-            
-            # --- CONTENT SCRAPING (No change here) ---
-            potential_blocks = soup.select(content_selector)
-            scraped_elements = set()
-            for element in potential_blocks:
-                if element in scraped_elements: continue
-                is_nested = any(parent in potential_blocks for parent in element.find_parents())
-                if is_nested: continue
-                
-                block_copy = copy.copy(element)
-                for tag_to_remove in block_copy.find_all(['nav', 'header', 'footer']):
-                    tag_to_remove.decompose()
-                
-                cleaned_text = block_copy.get_text(separator=" ", strip=True)
-                content_rows.append({
-                    "URL": url, "Content Block Type": " ".join(element.get("class", [])),
-                    "HTML Element": element.name, "Text Content": cleaned_text
-                })
-                scraped_elements.add(element)
-                scraped_elements.update(element.find_all(True))
+# 5. CONTROL PANEL
+with st.container(border=True):
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        uploaded_file = st.file_uploader("Upload an Excel file with URLs in the first column", type=['xlsx'])
+        if uploaded_file:
+            try:
+                df = pd.read_excel(uploaded_file, header=None)
+                valid_urls = df.iloc[:, 0].dropna()
+                valid_urls = valid_urls[valid_urls.str.startswith(('http://', 'https://'), na=False)]
+                st.session_state.urls_from_file = "\n".join(valid_urls)
+                st.success(f"Successfully imported {len(valid_urls)} URLs.")
+            except Exception as e:
+                st.error(f"Error reading the Excel file: {e}")
 
-        except Exception as e:
-            print(f"Error scraping {url}: {e}")
+        urls = st.text_area(
+            "Paste URLs or upload file",
+            value=st.session_state.urls_from_file,
+            height=210,
+            placeholder="Enter one URL per line...\nhttps://example.com/page1\nhttps://example.com/page2",
+            label_visibility="collapsed"
+        )
+    with col2:
+        full_assets_scrape = st.toggle("Full Asset Scrape", value=False, help="Slower. Fetches file size for all assets.")
+        run_button_clicked = st.button("> Run Scraping", use_container_width=True, type="primary")
 
-    content_df = pd.DataFrame(content_rows, columns=["URL", "Content Block Type", "HTML Element", "Text Content"])
-    asset_columns = [
-        "Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", 
-        "Image Title", "CSS Classes", "HTML ID", "Responsive Sources (srcset)", "File Size"
-    ]
-    asset_df = pd.DataFrame(asset_rows)
-    asset_df = asset_df.reindex(columns=asset_columns)
+# 6. SCRAPING LOGIC
+if run_button_clicked:
+    all_urls = [url.strip() for url in urls.splitlines() if url.strip()]
+    
+    if not all_urls:
+        st.warning("Please enter at least one URL.")
+    else:
+        valid_urls = [url for url in all_urls if url.startswith(('http://', 'https://'))]
+        invalid_urls = [url for url in all_urls if not url.startswith(('http://', 'https://'))]
 
-    return content_df, asset_df
+        if valid_urls:
+            spinner_message = "Scraping URLs (Full Asset Scan)..." if full_assets_scrape else "Scraping URLs (Light Scan)..."
+            with st.spinner(spinner_message):
+                st.session_state.df_content, st.session_state.df_assets = scrape_urls(
+                    urls=valid_urls, 
+                    full_assets=full_assets_scrape
+                )
+            st.success(f"Scraping complete for {len(valid_urls)} URL(s).")
+        
+        if invalid_urls:
+            invalid_list_str = "\n".join([f"- `{url}`" for url in invalid_urls])
+            message = (
+                f"**Skipped {len(invalid_urls)} URL(s) due to missing 'http://' or 'https://' prefix:**\n\n"
+                f"{invalid_list_str}\n\n"
+                "Please correct them and run the scrape again if needed."
+            )
+            if not valid_urls:
+                st.error(message)
+            else:
+                st.warning(message)
+
+# 7. RESULTS & ACTIONS
+st.divider()
+if st.session_state.df_content is not None:
+    # Content Inventory Results
+    if not st.session_state.df_content.empty:
+        res_col1, res_col2, res_col3, res_col4 = st.columns([1.5, 2, 0.2, 2])
+        with res_col1:
+            st.write(f"Found **{len(st.session_state.df_content)}** content blocks.")
+        with res_col2:
+            output_content = io.BytesIO()
+            st.session_state.df_content.to_excel(output_content, index=False)
+            st.download_button(label="↓ Download Inventory", data=output_content.getvalue(), file_name="content_inventory.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="download_content", use_container_width=True)
+        with res_col3:
+            st.write("or")
+        with res_col4:
+            if st.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
+                with st.spinner("Uploading content..."):
+                    # CORRECTED: Changed table name back to "Content Inventory"
+                    airtable_upload.upload_to_airtable(
+                        st.session_state.df_content, 
+                        "Content Inventory", 
+                        key_fields=['URL', 'Text Content']
+                    )
+
+    # Asset Inventory Results
+    if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
+        res_col1, res_col2, res_col3, res_col4 = st.columns([1.5, 2, 0.2, 2])
+        with res_col1:
+            st.write(f"Found **{len(st.session_state.df_assets)}** assets.")
+        with res_col2:
+            output_assets = io.BytesIO()
+            st.session_state.df_assets.to_excel(output_assets, index=False)
+            st.download_button(label="↓ Download Assets", data=output_assets.getvalue(), file_name="asset_inventory.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", key="download_assets", use_container_width=True)
+        with res_col3:
+            st.write("or")
+        with res_col4:
+            if st.button("↑ Send to Airtable", key="upload_assets", use_container_width=True, type="secondary"):
+                with st.spinner("Uploading assets..."):
+                    airtable_upload.upload_to_airtable(
+                        st.session_state.df_assets, 
+                        "Asset Inventory",
+                        key_fields=['Asset URL']
+                    )
