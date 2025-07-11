@@ -1,37 +1,34 @@
+# All imports must come first
 import streamlit as st
 import pandas as pd
 import io
 from scrape import scrape_urls
 import airtable_upload
 
-# --- Page Configuration (Corrected) ---
-# The 'theme' parameter is removed as it's invalid.
+# 1. SET PAGE CONFIG: This MUST be the first Streamlit command in your script
 st.set_page_config(
     layout="wide",
     page_title="Content & Asset Extractor"
 )
 
-# --- Custom CSS for Styling (Updated) ---
+# 2. CUSTOM CSS: All other st commands come AFTER set_page_config
 st.markdown("""
 <style>
     /* Style the URL input area */
     .stTextArea textarea {
         background-color: #ECE8DE;
     }
-
-    /* --- NEW: Style the primary button --- */
+    /* Style the primary button */
     .stButton button[kind="primary"] {
         background-color: #000000 !important;
         color: #FFFFFF !important;
         border: 1px solid #000000 !important;
     }
     .stButton button[kind="primary"]:hover {
-        background-color: #333333 !important; /* A slightly lighter black for hover */
+        background-color: #333333 !important;
         border-color: #333333 !important;
         color: #FFFFFF !important;
     }
-    /* --- End New --- */
-
     /* Style the secondary action buttons */
     .stButton button[kind="secondary"] {
         border-color: #000000 !important;
@@ -46,7 +43,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Session State Initialization (No Change) ---
+# 3. SESSION STATE
 if 'df_content' not in st.session_state:
     st.session_state.df_content = None
 if 'df_assets' not in st.session_state:
@@ -55,9 +52,10 @@ if 'urls_from_file' not in st.session_state:
     st.session_state.urls_from_file = ""
 
 
+# 4. APP TITLE
 st.title("Content & Asset Extractor")
 
-# --- Control Panel Layout (No Change) ---
+# 5. CONTROL PANEL
 with st.container(border=True):
     col1, col2 = st.columns([3, 1])
 
@@ -97,7 +95,7 @@ with st.container(border=True):
             type="primary"
         )
 
-# --- Scraping Logic (No Change) ---
+# 6. SCRAPING LOGIC
 if run_button_clicked:
     url_list = [url.strip() for url in urls.splitlines() if url.strip()]
     if url_list:
@@ -111,7 +109,7 @@ if run_button_clicked:
     else:
         st.warning("Please enter at least one URL.")
 
-# --- Results & Actions Area (No Change) ---
+# 7. RESULTS & ACTIONS
 st.divider()
 
 if st.session_state.df_content is not None:
