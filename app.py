@@ -30,7 +30,7 @@ st.title("Content & Asset Extractor")
 st.markdown("""
 - **To begin:** Paste URLs directly into the text box or upload an Excel file.
 - **Full vs. Light Scrape:** Use the **'Full Asset Scrape'** toggle to fetch file sizes for all assets (slower) or leave it off for a much faster scan.
-- **Airtable Upload:** The **'Send to Airtable'** button now always creates new records. Duplicate entries may occur if you scrape and upload the same URL multiple times.
+- **Airtable Upload:** The **'Send to Airtable'** button always creates new records in the destination table. Duplicate entries may occur if you scrape and upload the same URL multiple times.
 - **View Results:** You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
 
