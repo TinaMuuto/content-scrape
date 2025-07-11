@@ -1,11 +1,11 @@
 import requests
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 import pandas as pd
 from urllib.parse import urljoin
 import os
 import copy
-import numpy as np
 
+# Define the specific, high-level content blocks you want to audit
 TARGET_BLOCK_CLASSES = [
     'section', 'hero', 'pdp__gallery', 'pdp__details', 'accordion', 
     'product-tile', 'inspiration-tile-v2', 'category-tile', 'article-content',
@@ -18,10 +18,10 @@ def get_asset_file_size(asset_url):
         response.raise_for_status()
         size_in_bytes = int(response.headers.get('Content-Length', 0))
         if size_in_bytes == 0:
-            return np.nan
+            return 'N/A'
         return f"{round(size_in_bytes / 1024, 2)} KB"
     except requests.exceptions.RequestException:
-        return np.nan
+        return 'N/A'
 
 def scrape_urls(urls, full_assets=False):
     content_rows, asset_rows = [], []
@@ -79,8 +79,14 @@ def scrape_urls(urls, full_assets=False):
         except Exception as e:
             print(f"Error scraping {url}: {e}")
 
-    content_df = pd.DataFrame(content_rows, columns=["URL", "Content Block Type", "HTML Element", "Text Content"]).fillna('')
+    content_df = pd.DataFrame(content_rows, columns=["URL", "Content Block Type", "HTML Element", "Text Content"])
     asset_columns = ["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "Image Title", "CSS Classes", "HTML ID", "Responsive Sources (srcset)", "File Size"]
-    asset_df = pd.DataFrame(asset_rows).reindex(columns=asset_columns).fillna('')
+    asset_df = pd.DataFrame(asset_rows).reindex(columns=asset_columns)
+    
+    # --- FINAL CLEANING STEP ---
+    # Convert every cell to a string and replace any leftover 'None' or 'nan' strings.
+    # This guarantees the data sent to the uploader is 100% clean.
+    content_df = content_df.astype(str).replace('nan', '').replace('None', '')
+    asset_df = asset_df.astype(str).replace('nan', '').replace('None', '')
     
     return content_df, asset_df
