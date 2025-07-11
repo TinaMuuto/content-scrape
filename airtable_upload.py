@@ -9,7 +9,7 @@ AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
 def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
     """
-    Uploads a pandas DataFrame to Airtable, now with a pre-flight schema check.
+    Uploads a pandas DataFrame to Airtable, now with a corrected pre-flight schema check.
     """
     if not all([AIRTABLE_API_KEY, AIRTABLE_BASE_ID]):
         st.error("Airtable API Key or Base ID is not configured in your Streamlit Secrets. Upload failed.")
@@ -19,10 +19,19 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
         st.error("The data frame is empty. Nothing to upload.")
         return
     
-    # --- PRE-FLIGHT SCHEMA CHECK ---
+    # --- PRE-FLIGHT SCHEMA CHECK (Corrected) ---
     try:
         api = Api(AIRTABLE_API_KEY)
-        table_schema = api.get_table_schema(AIRTABLE_BASE_ID, table_name)
+        # CORRECTED METHOD: Get the whole base schema first
+        base_schema = api.get_base_schema(AIRTABLE_BASE_ID) 
+        
+        # Find the specific table within the base schema
+        table_schema = next((t for t in base_schema['tables'] if t['name'] == table_name), None)
+
+        if not table_schema:
+            st.error(f"Could not find a table named '{table_name}' in your Airtable base. Please check the name.")
+            return
+
         airtable_fields = {field['name'] for field in table_schema['fields']}
         df_columns = set(df.columns)
 
@@ -30,12 +39,11 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
 
         with st.expander("🕵️ Airtable Upload Pre-flight Check", expanded=True):
             if not missing_fields:
-                st.success("✅ All columns from the script are present in your Airtable base.")
+                st.success(f"✅ Schema validated. All required columns are present in the '{table_name}' table.")
             else:
-                st.error(f"❌ Mismatch Found! Your '{table_name}' table in Airtable is missing the following required field(s):")
+                st.error(f"❌ Mismatch Found! Your '{table_name}' table is missing the following required field(s):")
                 st.code(f"{list(missing_fields)}")
-                st.warning("Please add these fields to your Airtable base with the exact names shown above to proceed with the upload.")
-                # Stop the function if fields are missing
+                st.warning("Please add these fields to your Airtable base with the exact names shown above to proceed.")
                 return
 
     except Exception as e:
