@@ -1,4 +1,3 @@
-# All imports must come first
 import streamlit as st
 import pandas as pd
 import io
@@ -17,6 +16,15 @@ st.markdown("""
     /* Style the URL input area */
     .stTextArea textarea {
         background-color: #ECE8DE;
+    }
+    /* Style the file uploader */
+    .stFileUploader section {
+        background-color: #EFEEEB;
+        border: 2px dashed #D3D3D3;
+    }
+    /* Style the active state of the toggle switch to green */
+    div[data-baseweb="toggle"] input:checked + div {
+        background-color: #4CAF50 !important;
     }
     /* Style the primary button */
     .stButton button[kind="primary"] {
@@ -52,8 +60,11 @@ if 'urls_from_file' not in st.session_state:
     st.session_state.urls_from_file = ""
 
 
-# 4. APP TITLE
+# 4. APP TITLE & INTRODUCTION
 st.title("Content & Asset Extractor")
+
+st.info("ℹ️ To begin, either paste URLs directly into the text box or upload an Excel file containing a list of URLs in the first column. The app will automatically extract valid URLs starting with 'https://'.")
+
 
 # 5. CONTROL PANEL
 with st.container(border=True):
@@ -61,7 +72,7 @@ with st.container(border=True):
 
     with col1:
         uploaded_file = st.file_uploader(
-            "Import URLs from an Excel file (first column)", 
+            "Upload an Excel file with URLs in the first column", 
             type=['xlsx']
         )
         if uploaded_file:
@@ -75,7 +86,7 @@ with st.container(border=True):
                 st.error(f"Error reading the Excel file: {e}")
 
         urls = st.text_area(
-            "Enter URLs or Upload an Excel File",
+            "Paste URLs or upload file",
             value=st.session_state.urls_from_file,
             height=155,
             placeholder="Enter one URL per line...\nhttps://example.com/page1\nhttps://example.com/page2",
