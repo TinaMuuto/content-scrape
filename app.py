@@ -25,7 +25,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# 3. SESSION STATE INITIALIZATION
+# 3. SESSION STATE
 if 'df_content' not in st.session_state:
     st.session_state.df_content = None
 if 'df_assets' not in st.session_state:
@@ -34,9 +34,13 @@ if 'urls_from_file' not in st.session_state:
     st.session_state.urls_from_file = ""
 
 
-# 4. APP TITLE & INTRODUCTION
+# 4. APP TITLE & INTRODUCTION (Updated)
 st.title("Content & Asset Extractor")
-st.write("To begin, either paste URLs directly into the text box or upload an Excel file containing a list of URLs in the first column. The app will automatically extract valid URLs starting with 'https://' or 'http://'.")
+st.markdown("""
+To begin, either paste URLs directly into the text box or upload an Excel file.
+- The **"Send to Airtable"** button will update existing records if they already exist (based on URL) or create new ones if they don't. This prevents creating duplicate entries.
+- You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
+""")
 
 
 # 5. CONTROL PANEL
@@ -113,7 +117,6 @@ if st.session_state.df_content is not None:
         with res_col4:
             if st.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
                 with st.spinner("Uploading content..."):
-                    # CORRECTED: Changed table name back to "Content Inventory"
                     airtable_upload.upload_to_airtable(
                         st.session_state.df_content, 
                         "Content Inventory", 
