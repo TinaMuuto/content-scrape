@@ -5,7 +5,6 @@ from urllib.parse import urljoin
 import os
 import copy
 
-# Define the specific, high-level content blocks you want to audit
 TARGET_BLOCK_CLASSES = [
     'section', 'hero', 'pdp__gallery', 'pdp__details', 'accordion', 
     'product-tile', 'inspiration-tile-v2', 'category-tile', 'article-content',
@@ -13,25 +12,16 @@ TARGET_BLOCK_CLASSES = [
 ]
 
 def get_asset_file_size(asset_url):
-    """
-    Makes a HEAD request to get the asset's file size without downloading the whole file.
-    """
     try:
         response = requests.head(asset_url, timeout=5, allow_redirects=True)
         response.raise_for_status()
         size_in_bytes = int(response.headers.get('Content-Length', 0))
-        if size_in_bytes == 0:
-            return 'N/A'
+        if size_in_bytes == 0: return 'N/A'
         return f"{round(size_in_bytes / 1024, 2)} KB"
     except requests.exceptions.RequestException:
         return 'N/A'
 
 def scrape_urls(urls, full_assets=False):
-    """
-    Crawls a list of URLs and extracts two inventories.
-    - urls: A list of URLs to scrape.
-    - full_assets: If True, performs a slower scrape to get asset file sizes.
-    """
     content_rows = []
     asset_rows = []
     asset_extensions = ['.pdf', '.docx', '.xlsx', '.zip', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.webp']
@@ -44,17 +34,13 @@ def scrape_urls(urls, full_assets=False):
             soup = BeautifulSoup(response.text, "html.parser")
             
             found_asset_urls = set()
-
             def get_size(asset_url):
                 return get_asset_file_size(asset_url) if full_assets else 'N/A'
 
-            # 1. ASSET SCRAPING (with de-duplication)
             for a_tag in soup.find_all("a", href=True):
                 if any(a_tag['href'].lower().endswith(ext) for ext in asset_extensions):
                     asset_url = urljoin(url, a_tag['href'])
-                    if asset_url in found_asset_urls:
-                        continue
-                    
+                    if asset_url in found_asset_urls: continue
                     asset_rows.append({
                         "Source Page URL": url, "Asset URL": asset_url, "Asset Type": os.path.splitext(a_tag['href'])[1].lower(),
                         "Link Text": a_tag.get_text(strip=True), "CSS Classes": " ".join(a_tag.get("class", [])),
@@ -66,9 +52,7 @@ def scrape_urls(urls, full_assets=False):
                 image_source = img_tag.get('data-src') or img_tag.get('src')
                 if image_source:
                     asset_url = urljoin(url, image_source)
-                    if asset_url in found_asset_urls:
-                        continue
-
+                    if asset_url in found_asset_urls: continue
                     asset_rows.append({
                         "Source Page URL": url, "Asset URL": asset_url, "Asset Type": "image",
                         "Alt Text": img_tag.get('alt', 'N/A'), "Image Title": img_tag.get('title', 'N/A'),
@@ -77,38 +61,26 @@ def scrape_urls(urls, full_assets=False):
                     })
                     found_asset_urls.add(asset_url)
             
-            # 2. INTELLIGENT CONTENT SCRAPING
             potential_blocks = soup.select(content_selector)
             scraped_elements = set()
             for element in potential_blocks:
                 if element in scraped_elements: continue
                 is_nested = any(parent in potential_blocks for parent in element.find_parents())
                 if is_nested: continue
-                
                 block_copy = copy.copy(element)
                 for tag_to_remove in block_copy.find_all(['nav', 'header', 'footer']):
                     tag_to_remove.decompose()
-                
                 cleaned_text = block_copy.get_text(separator=" ", strip=True)
                 content_rows.append({
-                    "URL": url,
-                    "Content Block Type": " ".join(element.get("class", [])),
-                    "HTML Element": element.name,
-                    "Text Content": cleaned_text
+                    "URL": url, "Content Block Type": " ".join(element.get("class", [])),
+                    "HTML Element": element.name, "Text Content": cleaned_text
                 })
                 scraped_elements.add(element)
                 scraped_elements.update(element.find_all(True))
-
         except Exception as e:
             print(f"Error scraping {url}: {e}")
 
     content_df = pd.DataFrame(content_rows, columns=["URL", "Content Block Type", "HTML Element", "Text Content"])
-    
-    asset_columns = [
-        "Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", 
-        "Image Title", "CSS Classes", "HTML ID", "Responsive Sources (srcset)", "File Size"
-    ]
-    asset_df = pd.DataFrame(asset_rows)
-    asset_df = asset_df.reindex(columns=asset_columns)
-
+    asset_columns = ["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "Image Title", "CSS Classes", "HTML ID", "Responsive Sources (srcset)", "File Size"]
+    asset_df = pd.DataFrame(asset_rows).reindex(columns=asset_columns)
     return content_df, asset_df
