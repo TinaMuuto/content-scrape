@@ -9,7 +9,7 @@ AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 
 def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
     """
-    Uploads a pandas DataFrame to Airtable, now with a corrected pre-flight schema check.
+    Uploads a pandas DataFrame to Airtable, with a corrected pre-flight schema check.
     """
     if not all([AIRTABLE_API_KEY, AIRTABLE_BASE_ID]):
         st.error("Airtable API Key or Base ID is not configured in your Streamlit Secrets. Upload failed.")
@@ -22,17 +22,16 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
     # --- PRE-FLIGHT SCHEMA CHECK (Corrected) ---
     try:
         api = Api(AIRTABLE_API_KEY)
-        # CORRECTED METHOD: Get the whole base schema first
-        base_schema = api.get_base_schema(AIRTABLE_BASE_ID) 
+        # CORRECTED METHOD: Use api.meta.get_base_schema()
+        base_schema = api.meta.get_base_schema(AIRTABLE_BASE_ID) 
         
-        # Find the specific table within the base schema
-        table_schema = next((t for t in base_schema['tables'] if t['name'] == table_name), None)
+        table_schema = next((t for t in base_schema.tables if t.name == table_name), None)
 
         if not table_schema:
             st.error(f"Could not find a table named '{table_name}' in your Airtable base. Please check the name.")
             return
 
-        airtable_fields = {field['name'] for field in table_schema['fields']}
+        airtable_fields = {field.name for field in table_schema.fields}
         df_columns = set(df.columns)
 
         missing_fields = df_columns - airtable_fields
@@ -47,7 +46,7 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
                 return
 
     except Exception as e:
-        st.error(f"Could not verify Airtable schema. This might be a permissions issue. Ensure your API token has the 'schema.bases:read' scope. Error: {e}")
+        st.error(f"Could not verify Airtable schema. Ensure your API token has the 'schema.bases:read' scope. Error: {e}")
         return
 
     # --- DATA PREPARATION & UPLOAD ---
