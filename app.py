@@ -77,7 +77,8 @@ if st.session_state.df_content is not None:
         c2.download_button("↓ Download Inventory", output_content.getvalue(), "content_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         c3.write("or")
         if c4.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
-            airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory", key_fields=['URL', 'Text Content'])
+            # CHANGED: Removed key_fields argument for the test
+            airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
     if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
         a1, a2, a3, a4 = st.columns([1.5, 2, 0.2, 2])
         a1.write(f"Found **{len(st.session_state.df_assets)}** assets.")
@@ -86,4 +87,5 @@ if st.session_state.df_content is not None:
         a2.download_button("↓ Download Assets", output_assets.getvalue(), "asset_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         a3.write("or")
         if a4.button("↑ Send to Airtable", key="upload_assets", use_container_width=True, type="secondary"):
-            airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory", key_fields=['Asset URL'])
+            # CHANGED: Removed key_fields argument for the test
+            airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
