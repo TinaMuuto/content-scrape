@@ -17,7 +17,6 @@ st.markdown("""
     .stButton button[kind="primary"]:hover { background-color: #333333 !important; border-color: #333333 !important; color: #FFFFFF !important; }
     .stButton button[kind="secondary"], [data-testid="stDownloadButton"] button { border-color: #000000 !important; color: #000000 !important; background-color: #FFFFFF !important; }
     .stButton button[kind="secondary"]:hover, [data-testid="stDownloadButton"] button:hover { border-color: #000000 !important; background-color: #EFEEEB !important; color: #000000 !important; }
-    div[data-testid="stVerticalBlock"] div.element-container:has(button[kind="primary"]){ display: flex; flex-direction: column; justify-content: flex-end; height: 100%; padding-bottom: 0.6rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -27,7 +26,7 @@ if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = "
 
 st.title("Content & Asset Extractor")
 st.markdown("""
-To begin, either paste URLs into the text box or upload an Excel file.
+To begin, either paste URLs directly into the text box or upload an Excel file.
 - The **"Send to Airtable"** button will update existing records if they already exist or create new ones if they don't.
 - You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
@@ -47,6 +46,8 @@ with st.container(border=True):
                 st.error(f"Error reading the Excel file: {e}")
         urls = st.text_area("Paste URLs or upload file", value=st.session_state.urls_from_file, height=210, placeholder="Enter one URL per line...", label_visibility="collapsed")
     with col2:
+        st.write("")
+        st.write("")
         full_assets_scrape = st.toggle("Full Asset Scrape", value=False, help="Slower. Fetches file size for all assets.")
         run_button_clicked = st.button("> Run Scraping", use_container_width=True, type="primary")
 
