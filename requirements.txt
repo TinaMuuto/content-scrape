@@ -3,7 +3,6 @@ pandas
 requests
 beautifulsoup4
 openpyxl
-python-dotenv
 fuzzywuzzy[speedup]
 pyairtable
-tqdm
+numpy
