@@ -4,9 +4,8 @@ import pandas as pd
 from urllib.parse import urljoin
 import os
 
-# --- NEW: Define the specific, high-level content blocks you want to audit ---
+# --- Define the specific, high-level content blocks you want to audit ---
 # You can and should customize this list based on your project's needs.
-# The order can matter if blocks are nested; place more general containers (like 'section') earlier.
 TARGET_BLOCK_CLASSES = [
     'section',
     'hero',
@@ -21,7 +20,7 @@ TARGET_BLOCK_CLASSES = [
     'room-explorer',
     'meet-designer',
     'usp-spot-banner',
-    'module' # Keep 'module' as a fallback if needed
+    'module' # Fallback
 ]
 
 def get_asset_file_size(asset_url):
@@ -40,13 +39,15 @@ def get_asset_file_size(asset_url):
     except requests.exceptions.RequestException:
         return 'N/A'
 
-def scrape_urls(urls, rich_scrape=False): # rich_scrape option from previous step
+def scrape_urls(urls, full_assets=False):
+    """
+    Crawls a list of URLs and extracts two inventories.
+    - urls: A list of URLs to scrape.
+    - full_assets: If True, performs a slower scrape to get asset file sizes.
+    """
     content_rows = []
     asset_rows = []
     asset_extensions = ['.pdf', '.docx', '.xlsx', '.zip', '.jpg', '.jpeg', '.png', '.svg', '.gif', '.webp']
-
-    # --- MODIFICATION: Create a CSS selector from the target classes ---
-    # This will look like ".section, .hero, .accordion, ..."
     content_selector = ", ".join([f".{cls}" for cls in TARGET_BLOCK_CLASSES])
 
     for url in urls:
@@ -56,30 +57,16 @@ def scrape_urls(urls, rich_scrape=False): # rich_scrape option from previous ste
             soup = BeautifulSoup(response.text, "html.parser")
 
             # --- INTELLIGENT CONTENT SCRAPING ---
-            
-            # Find all elements that could be a content block
             potential_blocks = soup.select(content_selector)
-            
-            # This set will keep track of elements we've already processed
-            # to avoid scraping children of already scraped blocks.
             scraped_elements = set()
 
             for element in potential_blocks:
-                # If this element has already been scraped (e.g., it was inside a larger section), skip it.
                 if element in scraped_elements:
                     continue
-
-                # Check if any parent of this element has also been found.
-                # If so, we prefer the parent, so we skip the child.
-                is_nested = False
-                for parent in element.find_parents():
-                    if parent in potential_blocks:
-                        is_nested = True
-                        break
+                is_nested = any(parent in potential_blocks for parent in element.find_parents())
                 if is_nested:
                     continue
                 
-                # This is a top-level block we want to keep.
                 content_rows.append({
                     "URL": url,
                     "Content Block Type": " ".join(element.get("class", [])),
@@ -87,15 +74,14 @@ def scrape_urls(urls, rich_scrape=False): # rich_scrape option from previous ste
                     "Text Content": element.get_text(separator=" ", strip=True)
                 })
                 
-                # Add this element and all its children to the scraped set
-                # so they won't be processed again.
                 scraped_elements.add(element)
-                scraped_elements.update(element.find_all())
+                scraped_elements.update(element.find_all(True))
 
-            # --- ASSET SCRAPING (with richer data, no changes here) ---
+            # --- ASSET SCRAPING ---
             def get_size(asset_url):
-                return get_asset_file_size(asset_url) if rich_scrape else 'N/A'
+                return get_asset_file_size(asset_url) if full_assets else 'N/A'
 
+            # Find and process links
             for a_tag in soup.find_all("a", href=True):
                 if any(a_tag['href'].lower().endswith(ext) for ext in asset_extensions):
                     asset_url = urljoin(url, a_tag['href'])
@@ -105,6 +91,7 @@ def scrape_urls(urls, rich_scrape=False): # rich_scrape option from previous ste
                         "HTML ID": a_tag.get("id", "N/A"), "File Size": get_size(asset_url)
                     })
 
+            # Find and process images
             for img_tag in soup.find_all("img"):
                 image_source = img_tag.get('data-src') or img_tag.get('src')
                 if image_source:
