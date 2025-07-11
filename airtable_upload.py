@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from pyairtable import Table
 import streamlit as st
-import numpy as np # Add numpy import
+import numpy as np
 
 # These are loaded from your environment variables (e.g., Streamlit Secrets)
 AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
@@ -11,11 +11,7 @@ AIRTABLE_BASE_ID = os.getenv("AIRTABLE_BASE_ID")
 def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
     """
     Uploads a pandas DataFrame to a specified Airtable table using the 'upsert' method.
-    - df: The pandas DataFrame to upload.
-    - table_name: The name of the table in Airtable.
-    - key_fields: A list of column names to use as the unique key for upserting.
     """
-    # 1. PRE-UPLOAD CHECKS
     if not all([AIRTABLE_API_KEY, AIRTABLE_BASE_ID]):
         st.error("Airtable API Key or Base ID is not configured in your Streamlit Secrets. Upload failed.")
         return
@@ -24,21 +20,24 @@ def upload_to_airtable(df: pd.DataFrame, table_name: str, key_fields: list):
         st.error("The data frame is empty. Nothing to upload.")
         return
         
-    # --- 2. DATA PREPARATION & UPLOAD ---
-    
-    # NEW: Replace any NaN values with an empty string to make it JSON compliant.
     df.replace(np.nan, '', inplace=True)
 
-    # Convert complex objects to strings before uploading
     for col in df.columns:
         if df[col].dtype == 'object':
             df[col] = df[col].apply(lambda x: str(x) if isinstance(x, (list, dict)) else x)
-    
+            df[col] = df[col].fillna('')
+
     records = df.to_dict('records')
+
+    # --- BUG INTRODUCED HERE ---
+    # This line incorrectly wraps each record in a dictionary with a 'fields' key.
+    # The pyairtable library expects the original list of records directly, 
+    # and this manual formatting will cause a KeyError.
+    records = [{'fields': r} for r in records]
+
     table = Table(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, table_name)
 
     try:
-        # UPDATED: Use batch_upsert instead of batch_create
         table.batch_upsert(records, key_fields=key_fields)
         st.success(f"Successfully uploaded/updated {len(records)} records in Airtable table '{table_name}'.")
     except Exception as e:
