@@ -25,11 +25,15 @@ if 'df_assets' not in st.session_state: st.session_state.df_assets = None
 if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = ""
 
 st.title("Content & Asset Extractor")
+
+# --- UPDATED INSTRUCTIONS ---
 st.markdown("""
-To begin, either paste URLs directly into the text box or upload an Excel file.
-- The **"Send to Airtable"** button will update existing records if they already exist or create new ones if they don't.
-- You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
+- **To begin:** Paste URLs directly into the text box or upload an Excel file.
+- **Full vs. Light Scrape:** Use the **'Full Asset Scrape'** toggle to fetch file sizes for all assets (slower) or leave it off for a much faster scan.
+- **Airtable Upload:** The **'Send to Airtable'** button now always creates new records. Duplicate entries may occur if you scrape and upload the same URL multiple times.
+- **View Results:** You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
+
 
 with st.container(border=True):
     col1, col2 = st.columns([3, 1])
@@ -77,7 +81,6 @@ if st.session_state.df_content is not None:
         c2.download_button("↓ Download Inventory", output_content.getvalue(), "content_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         c3.write("or")
         if c4.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
-            # CHANGED: Removed key_fields argument for the test
             airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
     if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
         a1, a2, a3, a4 = st.columns([1.5, 2, 0.2, 2])
@@ -87,5 +90,4 @@ if st.session_state.df_content is not None:
         a2.download_button("↓ Download Assets", output_assets.getvalue(), "asset_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         a3.write("or")
         if a4.button("↑ Send to Airtable", key="upload_assets", use_container_width=True, type="secondary"):
-            # CHANGED: Removed key_fields argument for the test
             airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
