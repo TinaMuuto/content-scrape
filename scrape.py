@@ -58,7 +58,7 @@ def scrape_urls(urls, full_assets=False):
                         asset_rows.append({ "Source Page URL": url, "Asset URL": asset_url, "Asset Type": "image", "Alt Text": img_tag.get('alt', ''), "File Size": get_size(asset_url) })
                         found_asset_urls.add(asset_url)
             
-            # --- New "Long" Format Content Inventory ---
+            # --- "Long" Format Content Inventory ---
             scraped_elements = set()
             block_counters = {}
 
@@ -101,21 +101,28 @@ def scrape_urls(urls, full_assets=False):
                            if (isinstance(value, str) and (value.startswith('/') or value.startswith('../'))):
                                value = urljoin(url, value)
 
+                           # Get the CSS classes as a space-separated string
+                           css_classes = ' '.join(target_element.get('class', []))
+
                            content_rows.append({
                                "URL": url,
                                "Block Name": block_def['name'],
                                "Block Instance ID": instance_id,
                                "Component": component_name,
                                "Value": value,
-                               "Source Element": target_element.name.upper()
+                               "Source Element": target_element.name.upper(),
+                               "CSS Classes": css_classes # Add the new data
                            })
 
                     scraped_elements.add(element)
                     scraped_elements.update(element.find_all(True))
         except Exception as e:
             print(f"Error scraping {url}: {e}")
-
-    content_df = pd.DataFrame(content_rows, columns=["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element"]).fillna('')
+    
+    # Define the final set of columns including the new one
+    content_columns = ["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element", "CSS Classes"]
+    content_df = pd.DataFrame(content_rows).reindex(columns=content_columns).fillna('')
+    
     asset_df = pd.DataFrame(asset_rows, columns=["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "File Size"]).fillna('')
     
     return content_df, asset_df
