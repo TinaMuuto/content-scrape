@@ -1,7 +1,4 @@
-README.md Content
-Markdown
-
-# Advanced Web Content & Asset Auditor
+# Web Content & Asset Auditor
 
 A Streamlit web application for performing detailed website content audits. This tool crawls a list of URLs to produce a granular **Component Inventory** and a comprehensive **Asset Inventory**, providing a structured and analyzable dataset of a website's content.
 
