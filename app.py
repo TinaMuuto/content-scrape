@@ -23,11 +23,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Initialize Session State ---
+# FIX: Ensure all dataframes are initialized as empty pandas DataFrames, not None.
 if 'df_content' not in st.session_state: st.session_state.df_content = pd.DataFrame()
 if 'df_assets' not in st.session_state: st.session_state.df_assets = pd.DataFrame()
 if 'df_links' not in st.session_state: st.session_state.df_links = pd.DataFrame()
 if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = ""
 if 'processed_urls' not in st.session_state: st.session_state.processed_urls = set()
+
 
 # --- App Header ---
 st.title("Content & Asset Extractor")
@@ -75,11 +77,10 @@ if run_button_clicked:
         if not all_urls:
             st.warning("Please enter at least one URL.")
         else:
-            # URLs to process are those not already in the processed set
             urls_to_process = [url for url in all_urls if url not in st.session_state.processed_urls]
             
             if not urls_to_process:
-                st.info("All URLs have already been processed. Clear the cache to start over.")
+                st.info("All URLs have already been processed. Clear the results to start over.")
             else:
                 st.subheader("Scraping Progress")
                 progress_bar = st.progress(0)
@@ -92,13 +93,11 @@ if run_button_clicked:
                     status_text.text(f"Scraping {i+1} of {len(urls_to_process)}: {url}")
 
                     try:
-                        # Call the scrape function
                         content, assets, links = scrape_single_url(url, 
                                                                 do_inventory=inventory_option, 
                                                                 fetch_sizes=fetch_sizes_option, 
                                                                 check_links=check_links_option)
                         
-                        # Append new data to existing DataFrames in session_state
                         if content:
                             st.session_state.df_content = pd.concat([st.session_state.df_content, pd.DataFrame(content)], ignore_index=True)
                         if assets:
@@ -106,7 +105,6 @@ if run_button_clicked:
                         if links:
                             st.session_state.df_links = pd.concat([st.session_state.df_links, pd.DataFrame(links)], ignore_index=True)
                         
-                        # Mark URL as processed
                         st.session_state.processed_urls.add(url)
 
                     except Exception as e:
@@ -118,18 +116,24 @@ if run_button_clicked:
 
 # --- Results Display ---
 st.divider()
-if not st.session_state.df_content.empty or not st.session_state.df_assets.empty or not st.session_state.df_links.empty:
+
+# FIX: This is the main fix for the AttributeError. 
+# We now check if the dataframe object is actually a DataFrame AND if it's not empty before trying to access its methods.
+df_content_exists = isinstance(st.session_state.get('df_content'), pd.DataFrame) and not st.session_state.df_content.empty
+df_assets_exists = isinstance(st.session_state.get('df_assets'), pd.DataFrame) and not st.session_state.df_assets.empty
+df_links_exists = isinstance(st.session_state.get('df_links'), pd.DataFrame) and not st.session_state.df_links.empty
+
+if df_content_exists or df_assets_exists or df_links_exists:
     st.header("Results")
     
-    # Add a button to clear the cache and start over
-    if st.button("Clear Cache and Start Over"):
+    if st.button("Clear Results and Start Over"):
         st.session_state.df_content = pd.DataFrame()
         st.session_state.df_assets = pd.DataFrame()
         st.session_state.df_links = pd.DataFrame()
         st.session_state.processed_urls = set()
-        st.experimental_rerun()
+        st.rerun()
 
-    if not st.session_state.df_content.empty:
+    if df_content_exists:
         st.subheader("Component Inventory")
         st.write(f"Found **{len(st.session_state.df_content)}** individual components.")
         c1, c2 = st.columns([1, 4])
@@ -142,7 +146,7 @@ if not st.session_state.df_content.empty or not st.session_state.df_assets.empty
                 airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
         st.dataframe(st.session_state.df_content)
 
-    if not st.session_state.df_assets.empty:
+    if df_assets_exists:
         st.subheader("Asset Inventory")
         st.write(f"Found **{len(st.session_state.df_assets)}** assets.")
         a1, a2 = st.columns([1, 4])
@@ -155,7 +159,7 @@ if not st.session_state.df_content.empty or not st.session_state.df_assets.empty
                 airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
         st.dataframe(st.session_state.df_assets)
 
-    if not st.session_state.df_links.empty:
+    if df_links_exists:
         st.subheader("Link Status Report")
         st.write(f"Found **{len(st.session_state.df_links)}** broken or problematic links.")
         l1, l2 = st.columns([1, 4])
