@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
-from scrape import scrape_single_url # <-- Import the new function
+from scrape import scrape_single_url
 import airtable_upload
 import time
 
@@ -31,17 +31,18 @@ if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = "
 # --- App Header (Updated Introduction) ---
 st.title("Content & Asset Extractor")
 st.markdown("""
-This tool performs a detailed audit of web pages based on the `mapping.json` configuration.
+This tool provides a detailed audit of web pages, creating structured inventories for strategic decisions like migrations, content cleanup, and performance analysis.
 
 - **To begin:** Paste URLs directly or upload an Excel file.
-- **Choose your scrape options:**
-    - The **Component & Asset Inventory** is always generated. It includes readability scores for all text content.
-    - Select optional add-ons for a deeper (but slower) analysis.
-- **View Results:** The app generates up to three reports below, which can be downloaded or sent to Airtable. If a URL has been scraped earlier existing records in the Airtable will be updated with any additional information.
+- **Choose your scrape options:** Select one or more analysis types.
+    - **Component & Asset Inventory:** A detailed breakdown of all content based on `mapping.json`. This report automatically includes **Readability Scores** for all text content.
+    - **Fetch Asset File Sizes:** A slower add-on to get the file size for all images and documents.
+    - **Check for Broken Links:** A very slow but powerful check for all broken links (404s) on the pages.
+- **Airtable Upload:** If a URL has been scraped earlier, the upload will update existing records with any new information.
 - **Airtable Link:** [**View the Muuto Content Inventory Base**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
 
-# --- URL Input and Controls (Updated) ---
+# --- URL Input and Controls ---
 with st.container(border=True):
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -58,63 +59,67 @@ with st.container(border=True):
         urls = st.text_area("Paste URLs or upload file", value=st.session_state.urls_from_file, height=210, placeholder="Enter one URL per line...", label_visibility="collapsed")
     with col2:
         st.subheader("Scrape Options")
-        st.checkbox("Generate Component & Asset Inventory", value=True, disabled=True, help="The core inventory of all components and assets found on the pages.")
-        fetch_sizes_option = st.checkbox("Fetch Asset File Sizes", help="Slower. Adds 'File Size' to the Asset Inventory.")
-        check_links_option = st.checkbox("Check for Broken Links", help="Very Slow. Generates a new 'Link Status Report' for broken links (e.g., 404s).")
+        inventory_option = st.checkbox("Component & Asset Inventory", value=True, help="A detailed inventory of all components and assets based on `mapping.json`.")
+        fetch_sizes_option = st.checkbox("Fetch Asset File Sizes", help="Slower. Adds 'File Size' to the Asset Inventory. Requires the main inventory to be selected.")
+        check_links_option = st.checkbox("Check for Broken Links", help="Very Slow. Generates a new 'Link Status Report' for all broken links (e.g., 404s).")
         
         run_button_clicked = st.button("> Run Scraping", use_container_width=True, type="primary")
 
 # --- Scraping Logic with Progress Bar ---
 if run_button_clicked:
-    all_urls = sorted(list(set([url.strip() for url in urls.splitlines() if url.strip()]))) # Get unique URLs
-    if not all_urls:
-        st.warning("Please enter at least one URL.")
+    if not any([inventory_option, fetch_sizes_option, check_links_option]):
+        st.error("Please select at least one scrape option.")
     else:
-        # Clear previous results
-        st.session_state.df_content, st.session_state.df_assets, st.session_state.df_links = None, None, None
-        all_content_rows, all_asset_rows, all_link_rows = [], [], []
-        
-        st.subheader("Scraping Progress")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        start_time = time.time()
+        all_urls = sorted(list(set([url.strip() for url in urls.splitlines() if url.strip()]))) # Get unique URLs
+        if not all_urls:
+            st.warning("Please enter at least one URL.")
+        else:
+            # Clear previous results
+            st.session_state.df_content, st.session_state.df_assets, st.session_state.df_links = None, None, None
+            all_content_rows, all_asset_rows, all_link_rows = [], [], []
+            
+            st.subheader("Scraping Progress")
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            start_time = time.time()
 
-        for i, url in enumerate(all_urls):
-            # Update progress bar and status text
-            percent_complete = (i + 1) / len(all_urls)
-            progress_bar.progress(percent_complete)
-            status_text.text(f"Scraping {i+1} of {len(all_urls)}: {url}")
+            # If fetch_sizes is on, inventory must also be on
+            do_inventory = inventory_option or fetch_sizes_option
 
-            # Scrape the single URL with selected options
-            try:
-                content, assets, links = scrape_single_url(url, fetch_sizes=fetch_sizes_option, check_links=check_links_option)
-                all_content_rows.extend(content)
-                all_asset_rows.extend(assets)
-                all_link_rows.extend(links)
-            except Exception as e:
-                st.error(f"An unexpected error occurred while scraping {url}: {e}")
+            for i, url in enumerate(all_urls):
+                percent_complete = (i + 1) / len(all_urls)
+                progress_bar.progress(percent_complete)
+                status_text.text(f"Scraping {i+1} of {len(all_urls)}: {url}")
 
-        end_time = time.time()
-        status_text.success(f"Scraping complete for {len(all_urls)} URL(s) in {round(end_time - start_time, 2)} seconds.")
-        progress_bar.progress(1.0)
+                try:
+                    content, assets, links = scrape_single_url(url, do_inventory=do_inventory, fetch_sizes=fetch_sizes_option, check_links=check_links_option)
+                    all_content_rows.extend(content)
+                    all_asset_rows.extend(assets)
+                    all_link_rows.extend(links)
+                except Exception as e:
+                    st.error(f"An unexpected error occurred while scraping {url}: {e}")
 
-        # Create DataFrames from the aggregated data
-        content_cols = ["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element", "CSS Classes", "Readability Score", "Grade Level"]
-        st.session_state.df_content = pd.DataFrame(all_content_rows).reindex(columns=content_cols).fillna('')
-        
-        asset_cols = ["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "File Size"]
-        st.session_state.df_assets = pd.DataFrame(all_asset_rows).reindex(columns=asset_cols).fillna('')
+            end_time = time.time()
+            status_text.success(f"Scraping complete for {len(all_urls)} URL(s) in {round(end_time - start_time, 2)} seconds.")
+            progress_bar.progress(1.0)
 
-        if check_links_option:
-            link_cols = ["Source Page URL", "Linked URL", "Status Code", "Block Name", "Component"]
-            st.session_state.df_links = pd.DataFrame(all_link_rows).reindex(columns=link_cols).fillna('')
+            # Create DataFrames from the aggregated data
+            if do_inventory:
+                content_cols = ["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element", "CSS Classes", "Readability Score", "Grade Level"]
+                st.session_state.df_content = pd.DataFrame(all_content_rows).reindex(columns=content_cols).fillna('')
+                
+                asset_cols = ["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "File Size"]
+                st.session_state.df_assets = pd.DataFrame(all_asset_rows).reindex(columns=asset_cols).fillna('')
 
-# --- Results Display (Updated with Link Report) ---
+            if check_links_option:
+                link_cols = ["Source Page URL", "Linked URL", "Status Code"]
+                st.session_state.df_links = pd.DataFrame(all_link_rows).reindex(columns=link_cols).fillna('')
+
+# --- Results Display ---
 st.divider()
-if st.session_state.df_content is not None or st.session_state.df_assets is not None:
+if st.session_state.df_content is not None or st.session_state.df_assets is not None or st.session_state.df_links is not None:
     st.header("Results")
     
-    # --- Component Inventory ---
     if st.session_state.df_content is not None and not st.session_state.df_content.empty:
         st.subheader("Component Inventory")
         st.write(f"Found **{len(st.session_state.df_content)}** individual components.")
@@ -128,7 +133,6 @@ if st.session_state.df_content is not None or st.session_state.df_assets is not 
                 airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
         st.dataframe(st.session_state.df_content)
 
-    # --- Asset Inventory ---
     if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
         st.subheader("Asset Inventory")
         st.write(f"Found **{len(st.session_state.df_assets)}** assets.")
@@ -142,7 +146,6 @@ if st.session_state.df_content is not None or st.session_state.df_assets is not 
                 airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
         st.dataframe(st.session_state.df_assets)
 
-    # --- Link Status Report (New) ---
     if st.session_state.df_links is not None and not st.session_state.df_links.empty:
         st.subheader("Link Status Report")
         st.write(f"Found **{len(st.session_state.df_links)}** broken or problematic links.")
