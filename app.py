@@ -25,15 +25,11 @@ if 'df_assets' not in st.session_state: st.session_state.df_assets = None
 if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = ""
 
 st.title("Content & Asset Extractor")
-
-# --- UPDATED INSTRUCTIONS ---
 st.markdown("""
-- **To begin:** Paste URLs directly into the text box or upload an Excel file.
-- **Full vs. Light Scrape:** Use the **'Full Asset Scrape'** toggle to fetch file sizes for all assets (slower) or leave it off for a much faster scan.
-- **Airtable Upload:** The **'Send to Airtable'** button always creates new records in the destination table. Duplicate entries may occur if you scrape and upload the same URL multiple times.
-- **View Results:** You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
+- **To begin:** Paste URLs directly or upload an Excel file. Your `mapping.json` file must be in the same folder.
+- **Full vs. Light Scrape:** Use the **'Full Asset Scrape'** toggle to fetch file sizes (slower).
+- **Airtable Upload:** Ensure your 'Content Inventory' table has the correct 6 columns before uploading.
 """)
-
 
 with st.container(border=True):
     col1, col2 = st.columns([3, 1])
@@ -61,33 +57,36 @@ if run_button_clicked:
         st.warning("Please enter at least one URL.")
     else:
         valid_urls = [url for url in all_urls if url.startswith(('http://', 'https://'))]
-        invalid_urls = [url for url in all_urls if not url.startswith(('http://', 'https://'))]
         if valid_urls:
-            with st.spinner(f"Scraping {len(valid_urls)} URL(s)..."):
+            with st.spinner(f"Scraping {len(valid_urls)} URL(s)... This may take a moment."):
                 st.session_state.df_content, st.session_state.df_assets = scrape_urls(urls=valid_urls, full_assets=full_assets_scrape)
             st.success(f"Scraping complete for {len(valid_urls)} URL(s).")
-        if invalid_urls:
-            invalid_list_str = "\n".join([f"- `{url}`" for url in invalid_urls])
-            message = f"**Skipped {len(invalid_urls)} URL(s) due to missing prefix:**\n\n{invalid_list_str}"
-            st.error(message) if not valid_urls else st.warning(message)
 
 st.divider()
 if st.session_state.df_content is not None:
+    st.header("Results")
     if not st.session_state.df_content.empty:
-        c1, c2, c3, c4 = st.columns([1.5, 2, 0.2, 2])
-        c1.write(f"Found **{len(st.session_state.df_content)}** content blocks.")
-        output_content = io.BytesIO()
-        st.session_state.df_content.to_excel(output_content, index=False)
-        c2.download_button("↓ Download Inventory", output_content.getvalue(), "content_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-        c3.write("or")
-        if c4.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
-            airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
+        st.subheader("Component Inventory")
+        st.write(f"Found **{len(st.session_state.df_content)}** individual components across all pages.")
+        c1, c2 = st.columns([1, 4])
+        with c1:
+             output_content = io.BytesIO()
+             st.session_state.df_content.to_excel(output_content, index=False)
+             st.download_button("↓ Download Excel", output_content.getvalue(), "component_inventory.xlsx", use_container_width=True)
+        with c2:
+            if st.button("↑ Send to Airtable", key="upload_content", use_container_width=True, type="secondary"):
+                airtable_upload.upload_to_airtable(st.session_state.df_content, "Content Inventory")
+        st.dataframe(st.session_state.df_content)
+
     if st.session_state.df_assets is not None and not st.session_state.df_assets.empty:
-        a1, a2, a3, a4 = st.columns([1.5, 2, 0.2, 2])
-        a1.write(f"Found **{len(st.session_state.df_assets)}** assets.")
-        output_assets = io.BytesIO()
-        st.session_state.df_assets.to_excel(output_assets, index=False)
-        a2.download_button("↓ Download Assets", output_assets.getvalue(), "asset_inventory.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-        a3.write("or")
-        if a4.button("↑ Send to Airtable", key="upload_assets", use_container_width=True, type="secondary"):
-            airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
+        st.subheader("Asset Inventory")
+        st.write(f"Found **{len(st.session_state.df_assets)}** assets (images and documents).")
+        a1, a2 = st.columns([1, 4])
+        with a1:
+            output_assets = io.BytesIO()
+            st.session_state.df_assets.to_excel(output_assets, index=False)
+            st.download_button("↓ Download Excel", output_assets.getvalue(), "asset_inventory.xlsx", use_container_width=True)
+        with a2:
+            if st.button("↑ Send to Airtable", key="upload_assets", use_container_width=True, type="secondary"):
+                airtable_upload.upload_to_airtable(st.session_state.df_assets, "Asset Inventory")
+        st.dataframe(st.session_state.df_assets)
