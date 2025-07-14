@@ -1,0 +1,26 @@
+[
+    {
+        "name": "B01: Page Header", 
+        "selector": ".page-header", 
+        "components": { 
+            "Headline": ".page-header__headline", 
+            "Body": ".page-header__body", 
+            "Navigation / Links": ".page-header__nav" 
+        }
+    },
+    {
+        "name": "B01: Article Header", 
+        "selector": ".article-headline", 
+        "components": { 
+            "Headline": "h1" 
+        }
+    },
+    {
+        "name": "B05: Button (link)",
+        "selector": "a.button, a.button--primary, a.button--secondary",
+        "components": {
+            "CTA Text": null,
+            "CTA Link": "[href]"
+        }
+    }
+]
