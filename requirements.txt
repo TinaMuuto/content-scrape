@@ -3,6 +3,5 @@ pandas
 requests
 beautifulsoup4
 openpyxl
-fuzzywuzzy[speedup]
 pyairtable
 numpy
