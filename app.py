@@ -23,7 +23,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Initialize Session State ---
-# FIX: Ensure all dataframes are initialized as empty pandas DataFrames, not None.
 if 'df_content' not in st.session_state: st.session_state.df_content = pd.DataFrame()
 if 'df_assets' not in st.session_state: st.session_state.df_assets = pd.DataFrame()
 if 'df_links' not in st.session_state: st.session_state.df_links = pd.DataFrame()
@@ -60,20 +59,36 @@ with st.container(border=True):
             except Exception as e:
                 st.error(f"Error reading the Excel file: {e}")
         urls = st.text_area("Paste URLs or upload file", value=st.session_state.urls_from_file, height=210, placeholder="Enter one URL per line...", label_visibility="collapsed")
+
+        all_urls_in_box = sorted(list(set([url.strip() for url in urls.splitlines() if url.strip()])))
+        urls_to_process_count = len([url for url in all_urls_in_box if url not in st.session_state.processed_urls])
+
+        if st.session_state.processed_urls and urls_to_process_count > 0:
+            st.info(f"✅ Job is resumable. {len(st.session_state.processed_urls)} of {len(all_urls_in_box)} URLs are complete. Click 'Continue Scraping' to finish.")
+
     with col2:
         st.subheader("Scrape Options")
         inventory_option = st.checkbox("Component & Asset Inventory", value=True, help="A detailed inventory of all components and assets based on `mapping.json`.")
         fetch_sizes_option = st.checkbox("Fetch Asset File Sizes", help="Slower. Adds 'File Size' to the Asset Inventory.")
-        check_links_option = st.checkbox("Check for Broken Links", help="Very Slow. Generates a new 'Link Status Report' for all broken links (e.g., 404s).")
         
-        run_button_clicked = st.button("> Run Scraping", use_container_width=True, type="primary")
+        # EXPLANATION ADDED HERE
+        check_links_option = st.checkbox(
+            "Check for Broken Links", 
+            help="This is a very heavy job that can time out on large batches. The app automatically saves your progress after each URL. If it stops, just click 'Continue Scraping' to resume where you left off."
+        )
+        
+        button_label = "> Run Scraping"
+        if st.session_state.processed_urls and urls_to_process_count > 0:
+            button_label = "> Continue Scraping"
+        
+        run_button_clicked = st.button(button_label, use_container_width=True, type="primary")
 
 # --- Scraping Logic with Progress Bar ---
 if run_button_clicked:
     if not any([inventory_option, fetch_sizes_option, check_links_option]):
         st.error("Please select at least one scrape option.")
     else:
-        all_urls = sorted(list(set([url.strip() for url in urls.splitlines() if url.strip()]))) # Get unique URLs
+        all_urls = all_urls_in_box
         if not all_urls:
             st.warning("Please enter at least one URL.")
         else:
@@ -90,7 +105,9 @@ if run_button_clicked:
                 for i, url in enumerate(urls_to_process):
                     percent_complete = (i + 1) / len(urls_to_process)
                     progress_bar.progress(percent_complete)
-                    status_text.text(f"Scraping {i+1} of {len(urls_to_process)}: {url}")
+                    
+                    total_processed_count = len(st.session_state.processed_urls) + 1
+                    status_text.text(f"Processing URL {total_processed_count} of {len(all_urls)}: {url}")
 
                     try:
                         content, assets, links = scrape_single_url(url, 
@@ -113,12 +130,12 @@ if run_button_clicked:
                 end_time = time.time()
                 status_text.success(f"Scraping complete for {len(urls_to_process)} URL(s) in {round(end_time - start_time, 2)} seconds.")
                 progress_bar.progress(1.0)
+                st.rerun() 
+
 
 # --- Results Display ---
 st.divider()
 
-# FIX: This is the main fix for the AttributeError. 
-# We now check if the dataframe object is actually a DataFrame AND if it's not empty before trying to access its methods.
 df_content_exists = isinstance(st.session_state.get('df_content'), pd.DataFrame) and not st.session_state.df_content.empty
 df_assets_exists = isinstance(st.session_state.get('df_assets'), pd.DataFrame) and not st.session_state.df_assets.empty
 df_links_exists = isinstance(st.session_state.get('df_links'), pd.DataFrame) and not st.session_state.df_links.empty
@@ -126,7 +143,7 @@ df_links_exists = isinstance(st.session_state.get('df_links'), pd.DataFrame) and
 if df_content_exists or df_assets_exists or df_links_exists:
     st.header("Results")
     
-    if st.button("Clear Results and Start Over"):
+    if st.button("Clear All Data & Start Over"):
         st.session_state.df_content = pd.DataFrame()
         st.session_state.df_assets = pd.DataFrame()
         st.session_state.df_links = pd.DataFrame()
