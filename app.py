@@ -28,12 +28,17 @@ if 'df_assets' not in st.session_state: st.session_state.df_assets = None
 if 'df_links' not in st.session_state: st.session_state.df_links = None
 if 'urls_from_file' not in st.session_state: st.session_state.urls_from_file = ""
 
-# --- App Header ---
+# --- App Header (Updated Introduction) ---
 st.title("Content & Asset Extractor")
 st.markdown("""
+This tool performs a detailed audit of web pages based on the `mapping.json` configuration.
+
 - **To begin:** Paste URLs directly or upload an Excel file.
-- **Choose your scrape options:** The main inventory is always generated. You can add optional, slower analyses for more detail.
-- **View Results:** You can view the shared Airtable base here: [**Muuto Content Inventory**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
+- **Choose your scrape options:**
+    - The **Component & Asset Inventory** is always generated. It includes readability scores for all text content.
+    - Select optional add-ons for a deeper (but slower) analysis.
+- **View Results:** The app generates up to three reports below, which can be downloaded or sent to Airtable.
+- **Airtable Link:** [**View the Muuto Content Inventory Base**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
 
 # --- URL Input and Controls (Updated) ---
@@ -148,5 +153,5 @@ if st.session_state.df_content is not None or st.session_state.df_assets is not 
             st.download_button("↓ Download Excel", output_links.getvalue(), "link_status_report.xlsx", use_container_width=True, key="download_links")
         with l2:
             if st.button("↑ Send to Airtable", key="upload_links", use_container_width=True, type="secondary"):
-                # You might need a new Airtable table for this, e.g., "Link Status Report"
                 airtable_upload.upload_to_airtable(st.session_state.df_links, "Link Status Report")
+        st.dataframe(st.session_state.df_links)
