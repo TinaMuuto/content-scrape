@@ -37,7 +37,7 @@ This tool performs a detailed audit of web pages based on the `mapping.json` con
 - **Choose your scrape options:**
     - The **Component & Asset Inventory** is always generated. It includes readability scores for all text content.
     - Select optional add-ons for a deeper (but slower) analysis.
-- **View Results:** The app generates up to three reports below, which can be downloaded or sent to Airtable.
+- **View Results:** The app generates up to three reports below, which can be downloaded or sent to Airtable. If a URL has been scraped earlier existing records in the Airtable will be updated with any additional information.
 - **Airtable Link:** [**View the Muuto Content Inventory Base**](https://airtable.com/app5Rbv2ypbsF8ep0/shrBDpcNbPEHGkABN)
 """)
 
