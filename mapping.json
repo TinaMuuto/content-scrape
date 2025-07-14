@@ -1,18 +1,56 @@
 [
     {
-        "name": "B01: Page Header", 
-        "selector": ".page-header", 
-        "components": { 
-            "Headline": ".page-header__headline", 
-            "Body": ".page-header__body", 
-            "Navigation / Links": ".page-header__nav" 
+        "name": "B01: Page Header",
+        "selector": ".page-header",
+        "components": {
+            "Headline": ".page-header__headline",
+            "Body": ".page-header__body",
+            "Navigation": ".page-header__nav"
         }
     },
     {
-        "name": "B01: Article Header", 
-        "selector": ".article-headline", 
-        "components": { 
-            "Headline": "h1" 
+        "name": "B01: Page Header / Center aligned",
+        "selector": ".page-header--center-aligned",
+        "components": {
+            "Headline": ".page-header__headline",
+            "Body": ".page-header__body",
+            "Navigation": ".page-header__nav"
+        }
+    },
+    {
+        "name": "B01: Page Header / Flexible",
+        "selector": ".page-header--flexible",
+        "components": {
+            "Headline": ".page-header__headline",
+            "Body": ".page-header__body"
+        }
+    },
+    {
+        "name": "B01: Article Header",
+        "selector": ".article-headline",
+        "components": {
+            "Headline": "h1"
+        }
+    },
+    {
+        "name": "B02: Article Sub-header",
+        "selector": ".article-subheadline",
+        "components": {
+            "Headline": "h2"
+        }
+    },
+    {
+        "name": "B03: Article Manchet",
+        "selector": ".article-manchet",
+        "components": {
+            "Body": "div"
+        }
+    },
+    {
+        "name": "B04: Article Paragraph",
+        "selector": ".article-paragraph",
+        "components": {
+            "Body": "p"
         }
     },
     {
@@ -21,6 +59,411 @@
         "components": {
             "CTA Text": null,
             "CTA Link": "[href]"
+        }
+    },
+    {
+        "name": "B06: Image with text",
+        "selector": ".article-image",
+        "components": {
+            "Image URL": "img[src]",
+            "Caption": "figcaption, .byline",
+            "Rich Text": ".rich-text"
+        }
+    },
+    {
+        "name": "B07: Images in two columns",
+        "selector": ".article-images-2col",
+        "components": {
+            "Image URL": ".article-images-2col__figure img[src]",
+            "Body": ".article-images-2col__text"
+        }
+    },
+    {
+        "name": "B08: Interview",
+        "selector": ".article-interview",
+        "components": {
+            "Interview Line": ".article-interview__line"
+        }
+    },
+    {
+        "name": "B09: Quote",
+        "selector": ".article-quote",
+        "components": {
+            "Quote": "blockquote",
+            "Source": "cite"
+        }
+    },
+    {
+        "name": "B10: Rich Text",
+        "selector": ".article-richtext",
+        "components": {
+            "Rich Text": "*"
+        }
+    },
+    {
+        "name": "B11: Video (Vimeo)",
+        "selector": ".video-player--vimeo",
+        "components": {
+            "Video URL": "iframe[src]"
+        }
+    },
+    {
+        "name": "B12: customer pricelist",
+        "selector": ".product-teaser--flip",
+        "components": {
+            "Image URL": ".product-teaser__image img[src]",
+            "Aside Content": ".product-teaser__aside"
+        }
+    },
+    {
+        "name": "B13: Market Links",
+        "selector": ".links-list--download a",
+        "components": {
+            "Download Text": null,
+            "Download Link": "[href]"
+        }
+    },
+    {
+        "name": "B14: Image Text Slider Block",
+        "selector": ".slider--with-cta",
+        "components": {
+            "Image URL": ".product-teaser__image img[src]",
+            "Body": ".product-teaser__aside",
+            "CTA Text": ".product-teaser__cta",
+            "CTA Link": ".product-teaser__cta a[href]"
+        }
+    },
+    {
+        "name": "B15: Link Banner",
+        "selector": ".category-tile",
+        "components": {
+            "Headline": ".category-tile__headline",
+            "Body": ".category-tile__body",
+            "Link List": ".category-tile__list"
+        }
+    },
+    {
+        "name": "B16: Links List",
+        "selector": ".links-list a",
+        "components": {
+            "Link Text": null,
+            "Link": "[href]"
+        }
+    },
+    {
+        "name": "B17 & B22: Related Content",
+        "selector": ".recommendation",
+        "components": {
+            "Headline": "h2, h3",
+            "Content": ".inspiration-tile__inner, .product-tile__inner"
+        }
+    },
+    {
+        "name": "B23: Three column block",
+        "selector": ".grid-spotter",
+        "components": {
+            "Headline": ".grid-spotter__headline",
+            "Image URL": ".grid-spotter__image img[src]",
+            "Body": ".grid-spotter__text"
+        }
+    },
+    {
+        "name": "B24: related variants",
+        "selector": ".recommendation, .product-tile.bordered-grid",
+        "components": {
+            "Content": ".product-tile__inner"
+        }
+    },
+    {
+        "name": "B26: Images in two columns with buttons",
+        "selector": ".article-images-2col",
+        "components": {
+            "Headline": ".article-images-2col__headline",
+            "Body": ".article-images-2col__text",
+            "Image URL": ".article-images-2col__figure img[src]",
+            "CTA Text": "a.button",
+            "CTA Link": "a.button[href]"
+        }
+    },
+    {
+        "name": "B27: Image slider",
+        "selector": ".slider--inspiration",
+        "components": {
+            "Image URL": ".swiper-slide img[src]"
+        }
+    },
+    {
+        "name": "B27_V2: Image slider block",
+        "selector": ".slider-v2",
+        "components": {
+            "Headline": ".slider-v2__header",
+            "Image URL": ".slider-v2__image img[src]",
+            "Image Caption": ".slider-v2__image-caption"
+        }
+    },
+    {
+        "name": "B28: Section Header",
+        "selector": ".section-header",
+        "components": {
+            "Headline": ".section-header__headline",
+            "Body": ".section-header__body",
+            "CTA Text": "a.button",
+            "CTA Link": "a.button[href]"
+        }
+    },
+    {
+        "name": "B29: Explore topic",
+        "selector": ".explore-topic",
+        "components": {
+            "Image URL": ".explore-topic__image img[src]",
+            "Headline": "h4",
+            "Body": "p",
+            "CTA Text": "a",
+            "CTA Link": "a[href]"
+        }
+    },
+    {
+        "name": "B30: Three column navigation block",
+        "selector": "a.grid-spotter--button-link",
+        "components": {
+            "CTA Text": ".grid-spotter__inner",
+            "CTA Link": "[href]"
+        }
+    },
+    {
+        "name": "B31: List of Inspiration/Content Tile",
+        "selector": ".inspiration-tile",
+        "components": {
+            "Image URL": ".inspiration-tile__image-wrapper img[src]",
+            "Body": ".inspiration-tile__content"
+        }
+    },
+    {
+        "name": "B32 & B72: Content Spotter for PLP",
+        "selector": ".inspiration-tile-v2, .category-tile, .usp-spot",
+        "components": {
+            "Body": "*"
+        }
+    },
+    {
+        "name": "B33: Mega link list",
+        "selector": ".mega-links",
+        "components": {
+            "Link List": ".mega-links__list",
+            "Image URL": ".mega-links__image-container img[src]"
+        }
+    },
+    {
+        "name": "B34: Article Hero",
+        "selector": ".hero--article",
+        "components": {
+            "Image URL": ".hero__image[src]",
+            "Label": ".hero__label",
+            "Headline": ".hero__headline",
+            "Body": ".hero__bodytext"
+        }
+    },
+    {
+        "name": "B35: Room Explorer",
+        "selector": ".room-explorer",
+        "components": {
+            "Image URL": ".room__image img[src]",
+            "Body": ".room__content",
+            "Marker": ".marker"
+        }
+    },
+    {
+        "name": "B41: Hero Main Block",
+        "selector": ".hero--main",
+        "components": {
+            "Image URL": ".hero__image[src]",
+            "Label": ".hero__label",
+            "Headline": ".hero__headline",
+            "CTA Text": ".hero__cta.button",
+            "CTA Link": ".hero__cta.button[href]"
+        }
+    },
+    {
+        "name": "B42: Hero Main Video Block",
+        "selector": ".hero--main.hero--video",
+        "components": {
+            "Video URL": ".hero__video video[src]",
+            "Content": ".hero__content"
+        }
+    },
+    {
+        "name": "B45: Virtuelt showroom",
+        "selector": ".virtual-showroom, .article-image",
+        "components": {
+            "iframe URL": "iframe[src]",
+            "Caption": "figcaption"
+        }
+    },
+    {
+        "name": "B47: Showroom",
+        "selector": ".sticky-gallery",
+        "components": {
+            "Headline": ".sticky-gallery__header",
+            "List": ".sticky-gallery__list"
+        }
+    },
+    {
+        "name": "B48: introduction",
+        "selector": ".introduction-block",
+        "components": {
+            "Body": ".introduction-block__text",
+            "Image URL": ".introduction-block__media img[src]"
+        }
+    },
+    {
+        "name": "B49: Style explorer",
+        "selector": ".design-explorer",
+        "components": {
+            "Top Content": ".design-explorer__top",
+            "Tabs": ".tabs-bar"
+        }
+    },
+    {
+        "name": "B50: Inspiration Slider",
+        "selector": ".inspiration-slider",
+        "components": {
+            "Image URL": ".inspiration-slider__image-wrapper img[src]",
+            "Body": ".inspiration-slider__container"
+        }
+    },
+    {
+        "name": "B51: Inspirational Gallery",
+        "selector": ".inspiration-gallery",
+        "components": {
+            "Title": ".experience-title",
+            "Tabs": ".tabs-bar"
+        }
+    },
+    {
+        "name": "B52: Designer Component",
+        "selector": ".designer-presentation",
+        "components": {
+            "Headline": ".designer-presentation__headline",
+            "Body": ".designer-presentation__bodytext",
+            "Image URL": ".designer-presentation__image img[src]"
+        }
+    },
+    {
+        "name": "B53A / B53B: Animated Hero",
+        "selector": ".animated-hero",
+        "components": {
+            "Headline Part 1": ".animated-hero__headline__part1",
+            "Headline Part 2": ".animated-hero__headline__part2",
+            "Label": ".animated-hero__label"
+        }
+    },
+    {
+        "name": "B54: Property explorer",
+        "selector": ".property-explorer",
+        "components": {
+            "Top Content": ".property-explorer__top",
+            "Tabs": ".tabs-bar"
+        }
+    },
+    {
+        "name": "B55: Explore Our Sofa Series",
+        "selector": ".series-overview",
+        "components": {
+            "Top Content": ".series-overview__top",
+            "List": ".series-overview__list"
+        }
+    },
+    {
+        "name": "B56: Scroll Rotator",
+        "selector": ".scroll-rotator",
+        "components": {
+            "Product Image URL": ".scroll-rotator__product img[src]",
+            "Messages": ".scroll-rotator__messages"
+        }
+    },
+    {
+        "name": "B57: Material Explorer",
+        "selector": ".material-explorer",
+        "components": {
+            "Top Content": ".material-explorer__top",
+            "Categories": ".material-explorer__categories"
+        }
+    },
+    {
+        "name": "B58: Explore model",
+        "selector": ".model-explorer",
+        "components": {
+            "Top Content": ".model-explorer__top",
+            "Details": ".model-explorer__details"
+        }
+    },
+    {
+        "name": "B59: AR Banner",
+        "selector": ".ar-banner",
+        "components": {
+            "Icon": ".ar-banner__icon",
+            "Headline": ".ar-banner__headline",
+            "Body": ".ar-banner__bodytext",
+            "Button": ".ar-banner__button",
+            "Image URL": ".ar-banner__image img[src]"
+        }
+    },
+    {
+        "name": "B61: Certificate product list",
+        "selector": ".recommendation, .product-tile.bordered-grid",
+        "components": {
+            "Content": ".product-tile__inner"
+        }
+    },
+    {
+        "name": "B62: Contact Banner",
+        "selector": ".contact-banner",
+        "components": {
+            "Headline": ".contact-banner-tile__headline",
+            "Content": ".contact-banner-tile__content"
+        }
+    },
+    {
+        "name": "B63: stores navigation",
+        "selector": ".stores-navigation",
+        "components": {
+            "Navigation": ".stores-navigation__list",
+            "Image URL": ".stores-navigation__image-container img[src]"
+        }
+    },
+    {
+        "name": "B64: Step guide",
+        "selector": ".step-guide",
+        "components": {
+            "Text": ".step-guide__slide__text",
+            "Media": ".step-guide__slide__media"
+        }
+    },
+    {
+        "name": "B65: Hero Images/text",
+        "selector": ".hero-fragmented",
+        "components": {
+            "Label": ".hero-fragmented__label",
+            "Headline": ".hero-fragmented__headline",
+            "Body": ".hero-fragmented__body",
+            "Media": ".hero-fragmented__media"
+        }
+    },
+    {
+        "name": "B66: List of Inspiration Tile with shortcuts",
+        "selector": ".inspiration-tile-v2",
+        "components": {
+            "Media": ".inspiration-tile-v2__media",
+            "Headline": ".inspiration-tile-v2__headline",
+            "Body": ".inspiration-tile-v2__bodytext",
+            "CTA": ".inspiration-tile-v2__cta"
+        }
+    },
+    {
+        "name": "B69: USP Spot Banner",
+        "selector": ".usp-spot-banner",
+        "components": {
+            "Content": ".usp-spot"
         }
     }
 ]
