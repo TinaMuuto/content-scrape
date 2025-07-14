@@ -1,64 +1,122 @@
-# Muuto Content Extractor
+README.md Content
+Markdown
 
-## Purpose  
-Support Muuto’s web content cleanup and migration by automatically:  
-- Crawling and parsing URLs  
-- Extracting structured HTML content with element type, class, and full textual content (including links, images, scripts, videos, etc.) combined into a single content column  
-- Matching HTML blocks against known CMS block names from `blokke.xlsx` via fuzzy matching  
-- Exporting results to Excel  
-- Uploading structured data to Airtable  
+# Advanced Web Content & Asset Auditor
 
-## Project Structure  
+A Streamlit web application for performing detailed website content audits. This tool crawls a list of URLs to produce a granular **Component Inventory** and a comprehensive **Asset Inventory**, providing a structured and analyzable dataset of a website's content.
 
-muuto-content-app/
-├── app.py # Streamlit UI with English text, input, and output
-├── scrape.py # URL crawling, HTML parsing, fuzzy matching
-├── airtable.py # Airtable upload logic
-├── blokke.xlsx # Known CMS block names (column: Block_Name)
-├── requirements.txt # Python dependencies
-├── README.md # This project description
-├── .streamlit/config.toml # Streamlit UI config (optional)
+---
 
-markdown
-Kopier kode
+## ✨ Features
 
-## Technical Details  
+* **Structured Component Scraping**: Uses an external `mapping.json` file to identify content blocks and extract their individual components (headlines, images, CTAs, etc.) into a "long" key-value format.
+* **Detailed Component Metadata**: Captures the component's `Value` (text or link), `Source Element` (HTML tag), and its specific `CSS Classes`.
+* **External Configuration**: The core scraping logic is defined in `mapping.json`, allowing for easy updates without changing Python code.
+* **Dual Inventories**: Generates two distinct reports: a detailed Component Inventory and a separate Asset Inventory (images, PDFs, etc.).
+* **Configurable Scrape Depth**: A toggle allows for a "Full Asset Scrape" to retrieve file sizes, or a faster scan without them.
+* **Flexible Input**: Supports pasting URLs directly or uploading an Excel file.
+* **Export Options**: Both inventories can be downloaded as Excel files or uploaded directly to Airtable.
 
-- Python environment: Streamlit Cloud managed, Python 3.13+  
-- Dependencies: Listed in `requirements.txt` (no Cloudinary or screenshot libs)  
-- Environment variables: Set via Streamlit Cloud dashboard (Settings > Secrets), e.g.:  
-  - `AIRTABLE_API_KEY`  
-  - `AIRTABLE_BASE_ID`  
-- No `.env` file in repo, no `load_dotenv()` — environment variables read via `os.environ.get()`  
+---
 
-## Data Extraction  
+## 🛠️ Setup & Installation
 
-- Scrapes all relevant block-level HTML elements (`div`, `section`, `p`, `h1-h6`, `a`, `img`, `script`, `video`, etc.)  
-- `Text Content` column consolidates text and relevant attributes (e.g., href, src, alt) for each element  
-- Uses `fuzzywuzzy` to approximate-match element classes with `Block_Name` from `blokke.xlsx`  
-- Outputs one row per HTML element  
+Follow these steps to get the application running locally.
 
-## Output  
+### 1. Prerequisites
 
-- Excel columns:  
-  - `URL`  
-  - `HTML Element Type`  
-  - `HTML Class`  
-  - `Text Content`  
-  - `Matched Block Name`  
-- Airtable upload matches these columns to a table with identical column names  
-- No screenshots or image uploads included  
+* Python 3.8+
+* An Airtable account (if using the Airtable export feature)
 
-## Usage  
+### 2. Clone the Repository
 
-1. Add Airtable API key and Base ID as Secrets in Streamlit Cloud dashboard (`AIRTABLE_API_KEY` and `AIRTABLE_BASE_ID`)  
-2. Push repo to GitHub (with updated code, no `.env` file)  
-3. Run Streamlit app from cloud  
-4. Enter one URL per line and run scraping  
-5. Download Excel or upload data to Airtable via buttons  
+```bash
+git clone <your-repository-url>
+cd <your-repository-folder>
+3. Install Dependencies
+It's recommended to use a virtual environment.
 
-## Notes  
+Bash
 
-- All UI text is in English  
-- Requires `blokke.xlsx` with `Block_Name` column  
-- Does not include screenshot or Cloudinary integration for simplicity  
+# Create and activate a virtual environment (optional but recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+
+# Install required packages
+pip install -r requirements.txt
+4. Configuration
+Component Mapping
+Modify the mapping.json file to define the website-specific blocks and components you want to scrape. The structure is an array of objects, where each object defines a block's name, selector, and its components.
+
+Airtable Integration (Optional)
+If you plan to use the Airtable export feature, you must set the following environment variables:
+
+AIRTABLE_API_KEY: Your Airtable API key.
+
+AIRTABLE_BASE_ID: The ID of your Airtable base.
+
+You also need to ensure your Airtable base has two tables:
+
+Content Inventory with the following columns (text fields):
+
+URL
+
+Block Name
+
+Block Instance ID
+
+Component
+
+Value
+
+Source Element
+
+CSS Classes
+
+Asset Inventory with the following columns (text fields):
+
+Source Page URL
+
+Asset URL
+
+Asset Type
+
+Link Text
+
+Alt Text
+
+File Size
+
+🚀 How to Run
+With your environment configured, start the Streamlit application:
+
+Bash
+
+streamlit run app.py
+The application will open in a new browser tab.
+
+📖 How to Use
+Paste a list of URLs (one per line) into the text area, or upload an .xlsx file with URLs in the first column.
+
+Use the 'Full Asset Scrape' toggle if you need the file size for each asset (this will be slower).
+
+Click the '> Run Scraping' button.
+
+Once complete, the results will appear below.
+
+You can download the inventories as Excel files or send them to your configured Airtable base.
+
+📂 File Structure
+.
+├── app.py                  # Main Streamlit application file (UI)
+├── scrape.py               # Core scraping logic
+├── mapping.json            # Defines the blocks and components to be scraped
+├── airtable_upload.py      # Handles the Airtable API connection and upload
+├── requirements.txt        # Project dependencies
+└── README.md               # This file
+
+
+
+
+
+
