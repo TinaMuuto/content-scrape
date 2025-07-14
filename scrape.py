@@ -6,6 +6,7 @@ import os
 import numpy as np
 import re
 import json
+import textstat # <--- 1. IMPORT THE NEW LIBRARY
 
 # --- Load the mapping from the external file ---
 try:
@@ -38,7 +39,7 @@ def scrape_urls(urls, full_assets=False):
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             
-            # --- Asset Inventory ---
+            # --- Asset Inventory (No Changes) ---
             found_asset_urls = set()
             get_size = lambda asset_url: get_asset_file_size(asset_url) if full_assets else 'N/A'
 
@@ -82,18 +83,21 @@ def scrape_urls(urls, full_assets=False):
                             continue
 
                         value = ''
+                        is_text_content = True # <--- 2. ADD A FLAG TO TRACK CONTENT TYPE
                         attr_map = {'src': ['Image URL', 'Video URL', 'iframe URL'], 'href': ['Link', 'CTA Link', 'Download Link']}
                         
                         extracted = False
                         for attr, names in attr_map.items():
                             if component_name in names:
                                 value = target_element.get(attr)
+                                is_text_content = False # It's a URL, not text
                                 extracted = True
                                 break
                         
                         if not extracted:
                             if selector == '[href]':
                                 value = target_element.get('href')
+                                is_text_content = False # It's a URL, not text
                             else:
                                 value = ' '.join(target_element.get_text(separator=" ", strip=True).split())
 
@@ -101,8 +105,17 @@ def scrape_urls(urls, full_assets=False):
                            if (isinstance(value, str) and (value.startswith('/') or value.startswith('../'))):
                                value = urljoin(url, value)
 
-                           # Get the CSS classes as a space-separated string
                            css_classes = ' '.join(target_element.get('class', []))
+                           
+                           # --- 3. CALCULATE SCORES FOR TEXT CONTENT ---
+                           readability_score = None
+                           grade_level = None
+                           if is_text_content and len(value.split()) > 10: # Only calculate for text with more than 10 words
+                               try:
+                                   readability_score = textstat.flesch_reading_ease(value)
+                                   grade_level = textstat.flesch_kincaid_grade(value)
+                               except:
+                                   pass # Ignore errors for very short/weird text
 
                            content_rows.append({
                                "URL": url,
@@ -111,7 +124,9 @@ def scrape_urls(urls, full_assets=False):
                                "Component": component_name,
                                "Value": value,
                                "Source Element": target_element.name.upper(),
-                               "CSS Classes": css_classes # Add the new data
+                               "CSS Classes": css_classes,
+                               "Readability Score": readability_score, # Add new data
+                               "Grade Level": grade_level # Add new data
                            })
 
                     scraped_elements.add(element)
@@ -119,8 +134,8 @@ def scrape_urls(urls, full_assets=False):
         except Exception as e:
             print(f"Error scraping {url}: {e}")
     
-    # Define the final set of columns including the new one
-    content_columns = ["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element", "CSS Classes"]
+    # --- 4. ADD NEW COLUMNS TO THE FINAL OUTPUT ---
+    content_columns = ["URL", "Block Name", "Block Instance ID", "Component", "Value", "Source Element", "CSS Classes", "Readability Score", "Grade Level"]
     content_df = pd.DataFrame(content_rows).reindex(columns=content_columns).fillna('')
     
     asset_df = pd.DataFrame(asset_rows, columns=["Source Page URL", "Asset URL", "Asset Type", "Link Text", "Alt Text", "File Size"]).fillna('')
