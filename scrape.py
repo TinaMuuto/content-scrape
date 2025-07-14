@@ -23,7 +23,7 @@ except json.JSONDecodeError:
 def get_asset_file_size(asset_url):
     """Makes a HEAD request to get the size of an asset."""
     try:
-        response = requests.head(asset_url, timeout=5, allow_redirects=True)
+        response = requests.head(asset_url, timeout=10, allow_redirects=True) # Increased timeout
         if response.status_code == 200:
             size_in_bytes = int(response.headers.get('Content-Length', 0))
             return f"{round(size_in_bytes / 1024, 2)} KB" if size_in_bytes > 0 else np.nan
@@ -34,12 +34,17 @@ def get_asset_file_size(asset_url):
 def check_link_status(link_url):
     """Makes a HEAD request to check if a link is broken. Returns a tuple (url, status)."""
     try:
-        response = requests.head(link_url, timeout=5, allow_redirects=True)
-        return link_url, response.status_code
+        # Using a session object for potentially better performance with keep-alive
+        with requests.Session() as session:
+            response = session.head(link_url, timeout=10, allow_redirects=True) # Increased timeout
+            return link_url, response.status_code
     except requests.exceptions.Timeout:
         return link_url, "Error: Timeout"
-    except requests.exceptions.RequestException:
-        return link_url, "Error: Connection Failed"
+    except requests.exceptions.TooManyRedirects:
+        return link_url, "Error: Too Many Redirects"
+    except requests.exceptions.RequestException as e:
+        # A more descriptive error for connection issues
+        return link_url, f"Error: {type(e).__name__}"
 
 def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=False):
     """
@@ -48,12 +53,18 @@ def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=Fa
     content_rows, asset_rows, link_rows = [], [], []
     
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=15) # Increased timeout for the initial GET
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
     except requests.exceptions.RequestException as e:
         print(f"Failed to fetch {url}: {e}")
-        return [], [], []
+        # If the main page fails, create a single "broken link" entry for it.
+        link_rows.append({
+            "Source Page URL": "N/A",
+            "Linked URL": url,
+            "Status Code": f"Error fetching source URL: {type(e).__name__}"
+        })
+        return [], [], link_rows
 
     # --- Option 1: Component & Asset Inventory ---
     if do_inventory:
@@ -92,8 +103,8 @@ def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=Fa
                 for component_name, selector in block_def['components'].items():
                     target_element = element
                     if selector and selector not in ('*', '[href]'):
-                       child_element = element.select_one(selector)
-                       target_element = child_element if child_element else None
+                        child_element = element.select_one(selector)
+                        target_element = child_element if child_element else None
                     
                     if not target_element: continue
 
@@ -116,23 +127,23 @@ def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=Fa
                             value = ' '.join(target_element.get_text(separator=" ", strip=True).split())
 
                     if value:
-                       if not is_text_content:
-                           full_url = urljoin(url, value) if (isinstance(value, str) and (value.startswith('/') or value.startswith('../'))) else value
-                           value = full_url
+                        if not is_text_content:
+                            full_url = urljoin(url, value) if (isinstance(value, str) and (value.startswith('/') or value.startswith('../'))) else value
+                            value = full_url
 
-                       readability_score, grade_level = None, None
-                       if is_text_content and len(value.split()) > 10:
-                           try:
-                               readability_score = textstat.flesch_reading_ease(value)
-                               grade_level = textstat.flesch_kincaid_grade(value)
-                           except: pass
+                        readability_score, grade_level = None, None
+                        if is_text_content and len(value.split()) > 10:
+                            try:
+                                readability_score = textstat.flesch_reading_ease(value)
+                                grade_level = textstat.flesch_kincaid_grade(value)
+                            except: pass
 
-                       content_rows.append({
-                           "URL": url, "Block Name": block_def['name'], "Block Instance ID": instance_id,
-                           "Component": component_name, "Value": value, "Source Element": target_element.name.upper(),
-                           "CSS Classes": ' '.join(target_element.get('class', [])),
-                           "Readability Score": readability_score, "Grade Level": grade_level
-                       })
+                        content_rows.append({
+                            "URL": url, "Block Name": block_def['name'], "Block Instance ID": instance_id,
+                            "Component": component_name, "Value": value, "Source Element": target_element.name.upper(),
+                            "CSS Classes": ' '.join(target_element.get('class', [])),
+                            "Readability Score": readability_score, "Grade Level": grade_level
+                        })
 
                 scraped_elements.add(element)
                 scraped_elements.update(element.find_all(True))
@@ -149,11 +160,12 @@ def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=Fa
             if src:
                 all_links_on_page.add(urljoin(url, src))
         
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=15) as executor: # Slightly increased workers
             future_to_url = {executor.submit(check_link_status, link): link for link in all_links_on_page}
             for future in as_completed(future_to_url):
                 try:
                     checked_url, status = future.result()
+                    # Only report non-200 statuses
                     if status != 200:
                         link_rows.append({
                             "Source Page URL": url,
@@ -162,5 +174,10 @@ def scrape_single_url(url, do_inventory=False, fetch_sizes=False, check_links=Fa
                         })
                 except Exception as exc:
                     print(f'{future_to_url[future]} generated an exception: {exc}')
+                    link_rows.append({
+                        "Source Page URL": url,
+                        "Linked URL": future_to_url[future],
+                        "Status Code": f"Scraping Exception: {exc}"
+                    })
 
     return content_rows, asset_rows, link_rows
