@@ -1,7 +1,7 @@
-Web Content & Asset Auditor
+# Web Content & Asset Auditor
 A Streamlit web application for performing detailed website content audits. This tool crawls a list of URLs to produce a granular Component Inventory, a comprehensive Asset Inventory, and a Link Status Report, providing a structured and analyzable dataset of a website's content and health.
 
-✨ Features
+# ✨ Features
 Structured Component Scraping: Uses an external mapping.json file to identify content blocks and extract their individual components (headlines, images, CTAs, etc.) into a "long" key-value format.
 
 Detailed Component Metadata: Captures the component's Value (text or link), Source Element (HTML tag), its specific CSS Classes, and calculates readability scores.
